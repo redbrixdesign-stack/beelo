@@ -1,0 +1,18 @@
+:root {
+  --card-padding: var(--spacing-md);
+  --card-gap: var(--spacing-sm);
+  --input-height: 48px;
+  --input-padding: 0 var(--spacing-md);
+  --btn-height: 48px;
+  --btn-padding: 0 var(--spacing-lg);
+  --btn-radius: var(--radius-md);
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+@media (max-width: 480px) {
+  :root {
+    --card-padding: var(--spacing-sm);
+    --btn-height: 52px;
+  }
+}

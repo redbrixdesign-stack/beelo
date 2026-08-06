@@ -1,0 +1,5 @@
+# Beelo - Offline-first operational memory for home-visit sales advisors
+User-agent: *
+Disallow: /
+
+# This is a private PWA - no public pages to index
