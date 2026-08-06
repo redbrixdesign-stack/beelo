@@ -1,13 +1,12 @@
 import { Layout } from '../components/layout/Layout'
 import { SyncQueuePanel } from '../components/sync/SyncQueuePanel'
-import { SyncStatusBadge } from '../components/sync/SyncStatusBadge'
 import { useSync } from '../../hooks/useSync'
 import { useOnline } from '../../hooks/useOnline'
 import { Card } from '../components/ui/Card'
-import { Wifi, WifiOff, Cloud, Sync, CheckCircle, AlertCircle } from 'lucide-react'
+import { Wifi, WifiOff, Cloud, RotateCcw, CheckCircle } from 'lucide-react'
 
 export function SyncStatus() {
-  const { status, pendingCount, queueItems, refreshStatus, retryFailed, clearSynced, isProcessing } = useSync()
+  const { status, pendingCount } = useSync()
   const online = useOnline()
 
   return (
@@ -25,7 +24,7 @@ export function SyncStatus() {
             background: !online ? 'var(--color-warning-muted)' : status === 'pending' ? 'var(--color-warning-muted)' : 'var(--color-success-muted)'
           }}>
             {!online && <WifiOff size={40} style={{ color: '#1a1a2e' }} />}
-            {online && status === 'pending' && <Sync size={40} style={{ color: '#1a1a2e' }} className="animate-spin" />}
+            {online && status === 'pending' && <RotateCcw size={40} style={{ color: '#1a1a2e' }} className="animate-spin" />}
             {online && status === 'synced' && <CheckCircle size={40} style={{ color: 'var(--color-success)' }} />}
           </div>
           <h2 style={{ margin: '0 0 var(--spacing-xs)', fontSize: '1.25rem' }}>

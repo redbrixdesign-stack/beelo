@@ -3,11 +3,10 @@ import { Layout } from '../components/layout/Layout'
 import { ProfileForm } from '../components/auth/ProfileForm'
 import { Card } from '../components/ui/Card'
 import { SyncQueuePanel } from '../components/sync/SyncQueuePanel'
-import { LogOut, User, Shield, Database } from 'lucide-react'
+import { LogOut, User } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/ui/Toast'
-import { signOut } from '../../lib/auth'
 
 export function Profile() {
   const { advisor, user, signOut: signOutAuth } = useAuth()
@@ -19,7 +18,7 @@ export function Profile() {
       await signOutAuth()
       showToast('Signed out', 'success')
       navigate('/login')
-    } catch (err) {
+    } catch {
       showToast('Failed to sign out', 'error')
     }
   }

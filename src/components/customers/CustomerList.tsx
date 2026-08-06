@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react'
 import { Search, Plus, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useDexie } from '../../hooks/useDexie'
+import { useAuth } from '../../hooks/useAuth'
 import { Card } from '../ui/Card'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
+import type { CustomerDexie } from '../../lib/dexie'
 
 export function CustomerList() {
   const navigate = useNavigate()
   const { db, isReady } = useDexie()
-  const { advisor } = await import('../../hooks/useAuth').then(m => m.useAuth())
-  const [customers, setCustomers] = useState<Array<any>>([])
+  const { advisor } = useAuth()
+  const [customers, setCustomers] = useState<CustomerDexie[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -29,8 +31,8 @@ export function CustomerList() {
         .equals(advisor.id!)
         .sortBy('createdAt')
       setCustomers(data.reverse())
-    } catch (err) {
-      console.error('Failed to load customers:', err)
+    } catch (_err) {
+      console.error('Failed to load customers:', _err)
     } finally {
       setLoading(false)
     }
@@ -89,7 +91,7 @@ export function CustomerList() {
   )
 }
 
-function CustomerCard({ customer }: { customer: any }) {
+function CustomerCard({ customer }: { customer: CustomerDexie }) {
   const navigate = useNavigate()
 
   return (

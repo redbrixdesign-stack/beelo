@@ -5,6 +5,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
   loading?: boolean
+  leftIcon?: React.ReactNode
 }
 
 const baseStyles: CSSProperties = {
@@ -69,6 +70,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     loading = false, 
     disabled, 
     children, 
+    leftIcon,
     className = '',
     style,
     ...props 
@@ -106,6 +108,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
           </svg>
         )}
+        {!loading && leftIcon && leftIcon}
         {children}
       </button>
     )

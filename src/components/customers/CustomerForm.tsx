@@ -9,6 +9,7 @@ import { Input } from '../ui/Input'
 import { Card } from '../ui/Card'
 import { customerSchema, type CustomerInput } from '../../lib/validation'
 import { CUSTOMER_STATUSES, type CustomerStatus } from '../../lib/constants'
+import type { CustomerDexie } from '../../lib/dexie'
 
 export function CustomerForm() {
   const navigate = useNavigate()
@@ -68,7 +69,7 @@ export function CustomerForm() {
     }
   }
 
-  const validateField = (name: keyof CustomerInput, value: any) => {
+  const validateField = (name: keyof CustomerInput, value: unknown) => {
     const fieldSchema = customerSchema.shape[name]
     if (fieldSchema) {
       const result = fieldSchema.safeParse(value)
@@ -80,7 +81,7 @@ export function CustomerForm() {
     }
   }
 
-  const handleChange = (name: keyof CustomerInput, value: any) => {
+  const handleChange = (name: keyof CustomerInput, value: unknown) => {
     setFormData(prev => ({ ...prev, [name]: value }))
     validateField(name, value)
   }
@@ -133,7 +134,7 @@ export function CustomerForm() {
         if (existing) {
           throw new Error('Customer number already exists')
         }
-        customerId = await db.customers.add({ ...payload, createdAt: now } as any)
+        customerId = await db.customers.add({ ...payload, createdAt: now } as CustomerDexie)
       }
 
       await enqueueSync('customers', customerId, isEditing ? 'update' : 'create', payload)

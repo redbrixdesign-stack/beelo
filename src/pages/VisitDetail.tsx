@@ -3,11 +3,12 @@ import { useAuth } from '../../hooks/useAuth'
 import { useDexie } from '../../hooks/useDexie'
 import { useToast } from '../components/ui/Toast'
 import { Layout } from '../components/layout/Layout'
-import { VisitForm } from '../components/visits/VisitForm'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
-import { Calendar, Hash, Edit, Trash2, ChevronLeft } from 'lucide-react'
+import { Calendar, Hash, Edit, Trash2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import type { VisitDexie } from '../../lib/dexie'
 
 export function VisitDetail() {
   const { id } = useParams<{ id: string }>()
@@ -15,7 +16,7 @@ export function VisitDetail() {
   const { advisor } = useAuth()
   const { db, isReady } = useDexie()
   const { showToast } = useToast()
-  const [visit, setVisit] = useState<any>(null)
+  const [visit, setVisit] = useState<VisitDexie | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
 
@@ -34,8 +35,8 @@ export function VisitDetail() {
         .and(v => String(v.id) === id)
         .first()
       setVisit(data)
-    } catch (err) {
-      console.error('Failed to load visit:', err)
+    } catch {
+      console.error('Failed to load visit:')
     } finally {
       setLoading(false)
     }
@@ -50,7 +51,7 @@ export function VisitDetail() {
       // Note: In a real app, we'd also enqueue a delete sync
       showToast('Visit deleted', 'success')
       navigate('/visits')
-    } catch (err) {
+    } catch {
       showToast('Failed to delete visit', 'error')
     } finally {
       setDeleting(false)
@@ -176,5 +177,3 @@ export function VisitDetail() {
     </Layout>
   )
 }
-
-import { useState } from 'react'

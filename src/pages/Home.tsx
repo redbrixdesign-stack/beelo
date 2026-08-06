@@ -4,10 +4,8 @@ import { useSync } from '../../hooks/useSync'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '../components/layout/Layout'
-import { CustomerList } from '../components/customers/CustomerList'
-import { VisitList } from '../components/visits/VisitList'
 import { SyncQueuePanel } from '../components/sync/SyncQueuePanel'
-import { Calendar, Users, TrendingUp, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { Calendar, Users, TrendingUp, AlertTriangle, Clock } from 'lucide-react'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
@@ -15,7 +13,7 @@ import { Button } from '../components/ui/Button'
 export function Home() {
   const { advisor, user, loading: authLoading } = useAuth()
   const { isReady } = useDexie()
-  const { status, pendingCount } = useSync()
+  const { pendingCount } = useSync()
   const stats = useDashboardStats()
   const navigate = useNavigate()
 

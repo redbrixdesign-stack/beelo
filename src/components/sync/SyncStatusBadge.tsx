@@ -1,4 +1,4 @@
-import { WifiOff, Sync, CheckCircle } from 'lucide-react'
+import { WifiOff, RotateCcw, CheckCircle } from 'lucide-react'
 import { useSync } from '../../hooks/useSync'
 import { useOnline } from '../../hooks/useOnline'
 
@@ -38,7 +38,7 @@ export function SyncStatusBadge() {
         fontWeight: 600,
         color: '#1a1a2e'
       }}>
-        <Sync size={14} className="animate-spin" />
+        <RotateCcw size={14} className="animate-spin" />
         Pending {pendingCount}
       </span>
     )

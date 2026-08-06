@@ -9,12 +9,13 @@ import { Select } from '../ui/Select'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { OUTCOME_TAXONOMY, APPOINTMENT_TYPES, type AppointmentType, type OutcomeTaxonomy } from '../../lib/constants'
+import type { VisitDexie } from '../../lib/dexie'
 
 export function VisitList() {
   const navigate = useNavigate()
   const { db, isReady } = useDexie()
   const { advisor } = useAuth()
-  const [visits, setVisits] = useState<Array<any>>([])
+  const [visits, setVisits] = useState<VisitDexie[]>([])
   const [search, setSearch] = useState('')
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeTaxonomy | 'all'>('all')
   const [typeFilter, setTypeFilter] = useState<AppointmentType | 'all'>('all')
@@ -30,13 +31,13 @@ export function VisitList() {
     if (!advisor) return
     setLoading(true)
     try {
-      let data = await db.visits
+      const data = await db.visits
         .where('advisorId')
         .equals(advisor.id!)
         .sortBy('dateTime')
       setVisits(data.reverse())
-    } catch (err) {
-      console.error('Failed to load visits:', err)
+    } catch (_err) {
+      console.error('Failed to load visits:', _err)
     } finally {
       setLoading(false)
     }
@@ -138,7 +139,7 @@ export function VisitList() {
   )
 }
 
-function VisitCard({ visit }: { visit: any }) {
+function VisitCard({ visit }: { visit: VisitDexie }) {
   const navigate = useNavigate()
 
   const getOutcomeBadge = (outcome?: string) => {

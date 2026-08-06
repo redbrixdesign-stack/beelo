@@ -17,6 +17,7 @@ import {
   type AppointmentType, 
   type JobSource 
 } from '../../lib/constants'
+import type { VisitDexie } from '../../lib/dexie'
 
 export function VisitForm() {
   const navigate = useNavigate()
@@ -132,7 +133,7 @@ export function VisitForm() {
     }
   }
 
-  const validateField = (name: keyof VisitInput, value: any) => {
+  const validateField = (name: keyof VisitInput, value: unknown) => {
     const fieldSchema = visitSchema.shape[name]
     if (fieldSchema) {
       const result = fieldSchema.safeParse(value)
@@ -144,7 +145,7 @@ export function VisitForm() {
     }
   }
 
-  const handleChange = (name: keyof VisitInput, value: any) => {
+  const handleChange = (name: keyof VisitInput, value: unknown) => {
     setFormData(prev => ({ ...prev, [name]: value }))
     validateField(name, value)
   }
@@ -209,7 +210,7 @@ export function VisitForm() {
           throw new Error('Visit not found')
         }
       } else {
-        visitId = await db.visits.add({ ...payload, createdAt: now } as any)
+        visitId = await db.visits.add({ ...payload, createdAt: now } as VisitDexie)
       }
 
       await enqueueSync('visits', visitId, isEditing ? 'update' : 'create', payload)

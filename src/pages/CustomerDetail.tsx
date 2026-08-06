@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Edit, Trash2, Hash, Phone, MapPin } from 'lucide-react'
 import type { CustomerDexie } from '../../lib/dexie'
+import type { VisitDexie } from '../../lib/dexie'
 
 export function CustomerDetail() {
   const { id } = useParams<{ id: string }>()
@@ -17,7 +18,7 @@ export function CustomerDetail() {
   const { db, isReady } = useDexie()
   const { showToast } = useToast()
   const [customer, setCustomer] = useState<CustomerDexie | null>(null)
-  const [visits, setVisits] = useState<CustomerDexie[]>([])
+  const [visits, setVisits] = useState<VisitDexie[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
 
@@ -44,8 +45,8 @@ export function CustomerDetail() {
           .sortBy('dateTime')
         setVisits(visitData.reverse())
       }
-    } catch (err) {
-      console.error('Failed to load customer:', err)
+    } catch {
+      console.error('Failed to load customer:')
     } finally {
       setLoading(false)
     }
@@ -59,7 +60,7 @@ export function CustomerDetail() {
       await db.customers.delete(customer.id!)
       showToast('Customer deleted', 'success')
       navigate('/customers')
-    } catch (err) {
+    } catch {
       showToast('Failed to delete customer', 'error')
     } finally {
       setDeleting(false)
@@ -183,5 +184,3 @@ export function CustomerDetail() {
     </Layout>
   )
 }
-
-import { useState, useEffect } from 'react'

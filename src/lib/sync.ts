@@ -52,12 +52,12 @@ export async function getSyncQueueItems(): Promise<SyncQueueItem[]> {
 }
 
 async function processSyncItem(item: SyncQueueItem): Promise<boolean> {
-  const table = (supabase as any).from(item.entityType)
+  const table = supabase.from(item.entityType)
   
   try {
     await db.syncQueue.update(item.id!, { status: 'syncing' })
     
-    let error: any = null
+    let error: { message: string } | null = null
     
     switch (item.operation) {
       case 'create': {
