@@ -28,6 +28,13 @@
 - [ ] External lookups (geocoding, etc.) fail visibly with a retry path
 - [ ] Measurement units are cm; HMRC rate (if touched) is config, not hardcoded
 
+## Validator Report
+
+- [ ] validation-report.md attached
+- [ ] All automated checks: PASS
+- [ ] All 9 non-negotiables: PASS (evidence documented)
+- [ ] Validator status: PASS
+
 ## Blockers / open questions
 
 [Explicit, rather than worked around silently.]

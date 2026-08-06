@@ -6,6 +6,15 @@
 
 The founder is not a developer, is not reading diffs, and is reviewing this between jobs — often on a phone, in short windows. A review process built for a technical co-founder is the wrong process here. Optimise for "can this be confirmed correct in under five minutes without reading code," not for completeness of technical detail.
 
+## Validator Gate (Mandatory)
+
+Before any PR.md is considered complete, the Validator agent must run and output `validation-report.md` with status PASS. The report must show:
+- All automated checks passing (lint, typecheck, test)
+- All 9 non-negotiables explicitly verified with evidence (not assertions)
+- PR.md completeness confirmed
+
+If Validator reports FAIL → Builder must fix and re-validate. No handoff without PASS.
+
 ## The handoff shape that's worked well on this project
 
 1. **What was built, in plain English**, ideally as a short table: feature → where it lives → what it replaces or adds. Not a code walkthrough.

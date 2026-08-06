@@ -22,6 +22,13 @@ Work one phase at a time, in the order in `docs/PROJECT_SETUP_PLAN.md` §5. Do n
 3. Propose the schema/migration and RLS changes for that phase only, if any.
 4. Wait for explicit go-ahead before generating code.
 
+**After a phase is built, before handoff to founder:**
+5. **Run Validator agent** — it must PASS all checks:
+   - Automated: lint, typecheck, unit tests
+   - Non-negotiables: all 9 explicitly verified with evidence
+   - PR.md completeness: all sections filled
+6. **Only if Validator PASS** → produce PR.md handoff for founder review
+
 After a phase, provide: a plain-language summary of what was built and where, any judgment calls made and why, and a short manual test checklist (aim for 3 items or fewer, each completable in a couple of minutes) — the founder is reviewing this between jobs, on a phone, not reading a diff. See `skills/review/SKILL.md` for the full review pattern.
 
 ## Non-negotiables
