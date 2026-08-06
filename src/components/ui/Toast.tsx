@@ -1,3 +1,4 @@
+import { CSSProperties } from 'react'
 import { useState, ReactNode, createContext, useContext } from 'react'
 import { X } from 'lucide-react'
 
@@ -44,11 +45,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
   if (toasts.length === 0) return null
 
-  const typeStyles = {
-    success: 'border-left: 4px solid var(--color-success);',
-    error: 'border-left: 4px solid var(--color-error);',
-    warning: 'border-left: 4px solid var(--color-warning);',
-    info: 'border-left: 4px solid var(--color-primary);'
+  const typeStyles: Record<string, CSSProperties> = {
+    success: { borderLeft: '4px solid var(--color-success)' },
+    error: { borderLeft: '4px solid var(--color-error)' },
+    warning: { borderLeft: '4px solid var(--color-warning)' },
+    info: { borderLeft: '4px solid var(--color-primary)' }
   }
 
   const typeIcons = {
@@ -108,7 +109,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
           </button>
         </div>
       ))}
-      <style jsx global>{`
+      <style>{`
         @keyframes slideIn {
           from { opacity: 0; transform: translateX(100%); }
           to { opacity: 1; transform: translateX(0); }

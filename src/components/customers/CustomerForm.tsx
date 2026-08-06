@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
-import { useDexie } from '../../hooks/useDexie'
-import { useToast } from '../ui/Toast'
-import { enqueueSync } from '../../lib/sync'
-import { Button } from '../ui/Button'
-import { Input } from '../ui/Input'
-import { Card } from '../ui/Card'
-import { customerSchema, type CustomerInput } from '../../lib/validation'
-import { CUSTOMER_STATUSES, type CustomerStatus } from '../../lib/constants'
-import type { CustomerDexie } from '../../lib/dexie'
+import { useAuth } from '../../hooks/useAuth.tsx'
+import { useDexie } from '../../hooks/useDexie.tsx'
+import { useToast } from '../ui/Toast.tsx'
+import { enqueueSync } from '../../lib/sync.ts'
+import { Button } from '../ui/Button.tsx'
+import { Input } from '../ui/Input.tsx'
+import { Select } from '../ui/Select.tsx'
+import { Card } from '../ui/Card.tsx'
+import { customerSchema, type CustomerInput } from '../../lib/validation.ts'
+import { CUSTOMER_STATUSES, type CustomerStatus } from '../../lib/constants.ts'
+import type { CustomerDexie } from '../../lib/dexie.ts'
 
 export function CustomerForm() {
   const navigate = useNavigate()
@@ -109,7 +110,8 @@ export function CustomerForm() {
         advisorId: advisor.id,
         status,
         sourceEnv: (import.meta.env.VITE_SOURCE_ENV || 'live'),
-        updatedAt: now.toISOString()
+        history: {},
+        updatedAt: now
       }
 
       let customerId: number

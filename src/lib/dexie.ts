@@ -69,6 +69,7 @@ export interface VisitDexie {
   companyScheduledDurationMinutes?: number
   estimatedDurationMinutes?: number
   location?: string
+  address?: string
   sourceDocumentId?: number
   sourceEnv: SourceEnv
   outcome?: OutcomeTaxonomy
@@ -358,23 +359,6 @@ export class BeeloDB extends Dexie {
       syncQueue: '++id, entityType, entityId, operation, payload, status, retryCount, lastError, createdAt, [entityType+entityId], [status]'
     })
 
-    this.advisors.mapToClass(AdvisorDexie)
-    this.customers.mapToClass(CustomerDexie)
-    this.visits.mapToClass(VisitDexie)
-    this.leads.mapToClass(LeadDexie)
-    this.callAttempts.mapToClass(CallAttemptDexie)
-    this.voiceNotes.mapToClass(VoiceNoteDexie)
-    this.documents.mapToClass(DocumentDexie)
-    this.fitLineItems.mapToClass(FitLineItemDexie)
-    this.incidents.mapToClass(IncidentDexie)
-    this.quoteLineItems.mapToClass(QuoteLineItemDexie)
-    this.commissionLineItems.mapToClass(CommissionLineItemDexie)
-    this.trips.mapToClass(TripDexie)
-    this.expenses.mapToClass(ExpenseDexie)
-    this.messageDrafts.mapToClass(MessageDraftDexie)
-    this.scheduleSuggestions.mapToClass(ScheduleSuggestionDexie)
-    this.measurementChecks.mapToClass(MeasurementCheckDexie)
-    this.syncQueue.mapToClass(SyncQueueItem)
   }
 }
 

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Search, Plus, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useDexie } from '../../hooks/useDexie'
-import { useAuth } from '../../hooks/useAuth'
-import { Card } from '../ui/Card'
-import { Input } from '../ui/Input'
-import { Button } from '../ui/Button'
-import { Badge } from '../ui/Badge'
-import type { CustomerDexie } from '../../lib/dexie'
+import { useDexie } from '../../hooks/useDexie.tsx'
+import { useAuth } from '../../hooks/useAuth.tsx'
+import { Card } from '../ui/Card.tsx'
+import { Input } from '../ui/Input.tsx'
+import { Button } from '../ui/Button.tsx'
+import { Badge } from '../ui/Badge.tsx'
+import type { CustomerDexie } from '../../lib/dexie.ts'
 
 export function CustomerList() {
   const navigate = useNavigate()

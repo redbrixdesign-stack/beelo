@@ -1,6 +1,6 @@
 import { WifiOff, RotateCcw, CheckCircle } from 'lucide-react'
-import { useSync } from '../../hooks/useSync'
-import { useOnline } from '../../hooks/useOnline'
+import { useSync } from '../../hooks/useSync.tsx'
+import { useOnline } from '../../hooks/useOnline.tsx'
 
 export function SyncStatusBadge() {
   const { status, pendingCount } = useSync()

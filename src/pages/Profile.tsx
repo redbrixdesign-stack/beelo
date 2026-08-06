@@ -1,12 +1,12 @@
-import { useAuth } from '../../hooks/useAuth'
-import { Layout } from '../components/layout/Layout'
-import { ProfileForm } from '../components/auth/ProfileForm'
-import { Card } from '../components/ui/Card'
-import { SyncQueuePanel } from '../components/sync/SyncQueuePanel'
+import { useAuth } from '@hooks/useAuth'
+import { Layout } from '@components/layout/Layout'
+import { ProfileForm } from '@components/auth/ProfileForm'
+import { Card } from '@components/ui/Card'
+import { SyncQueuePanel } from '@components/sync/SyncQueuePanel'
 import { LogOut, User } from 'lucide-react'
-import { Button } from '../components/ui/Button'
+import { Button } from '@components/ui/Button'
 import { useNavigate } from 'react-router-dom'
-import { useToast } from '../components/ui/Toast'
+import { useToast } from '@components/ui/Toast'
 
 export function Profile() {
   const { advisor, user, signOut: signOutAuth } = useAuth()

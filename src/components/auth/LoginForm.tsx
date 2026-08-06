@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
-import { useAuth } from '../../hooks/useAuth'
-import { useToast } from '../ui/Toast'
-import { Button } from '../ui/Button'
-import { Input } from '../ui/Input'
-import { Card } from '../ui/Card'
+import { useAuth } from '../../hooks/useAuth.tsx'
+import { useToast } from '../ui/Toast.tsx'
+import { Button } from '../ui/Button.tsx'
+import { Input } from '../ui/Input.tsx'
+import { Card } from '../ui/Card.tsx'
+import { MagicLinkForm } from './MagicLinkForm.tsx'
 
 export function LoginForm() {
   const navigate = useNavigate()

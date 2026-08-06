@@ -1,8 +1,8 @@
-import { Layout } from '../components/layout/Layout'
-import { SyncQueuePanel } from '../components/sync/SyncQueuePanel'
-import { useSync } from '../../hooks/useSync'
-import { useOnline } from '../../hooks/useOnline'
-import { Card } from '../components/ui/Card'
+import { Layout } from '@components/layout/Layout'
+import { SyncQueuePanel } from '@components/sync/SyncQueuePanel'
+import { useSync } from '@hooks/useSync'
+import { useOnline } from '@hooks/useOnline'
+import { Card } from '@components/ui/Card'
 import { Wifi, WifiOff, Cloud, RotateCcw, CheckCircle } from 'lucide-react'
 
 export function SyncStatus() {

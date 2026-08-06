@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Search, Plus, Filter, ChevronRight, Hash } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useDexie } from '../../hooks/useDexie'
-import { useAuth } from '../../hooks/useAuth'
-import { Card } from '../ui/Card'
-import { Input } from '../ui/Input'
-import { Select } from '../ui/Select'
-import { Button } from '../ui/Button'
-import { Badge } from '../ui/Badge'
-import { OUTCOME_TAXONOMY, APPOINTMENT_TYPES, type AppointmentType, type OutcomeTaxonomy } from '../../lib/constants'
-import type { VisitDexie } from '../../lib/dexie'
+import { useDexie } from '../../hooks/useDexie.tsx'
+import { useAuth } from '../../hooks/useAuth.tsx'
+import { Card } from '../ui/Card.tsx'
+import { Input } from '../ui/Input.tsx'
+import { Select } from '../ui/Select.tsx'
+import { Button } from '../ui/Button.tsx'
+import { Badge } from '../ui/Badge.tsx'
+import { OUTCOME_TAXONOMY, APPOINTMENT_TYPES, type AppointmentType, type OutcomeTaxonomy } from '../../lib/constants.ts'
+import type { VisitDexie } from '../../lib/dexie.ts'
 
 export function VisitList() {
   const navigate = useNavigate()
@@ -149,9 +149,9 @@ function VisitCard({ visit }: { visit: VisitDexie }) {
     return <Badge variant={positive ? 'success' : negative ? 'error' : 'warning'} size="sm">{outcome}</Badge>
   }
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    return dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   }
 
   return (

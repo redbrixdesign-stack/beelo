@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../hooks/useAuth'
-import { useToast } from '../ui/Toast'
-import { Button } from '../ui/Button'
-import { Input } from '../ui/Input'
-import { Select } from '../ui/Select'
-import { Card } from '../ui/Card'
-import { advisorProfileSchema, type AdvisorProfile } from '../../lib/validation'
-import { EMPLOYMENT_MODELS, CONSENT_STATUSES, type EmploymentModel, type ConsentStatus } from '../../lib/constants'
+import { useAuth } from '../../hooks/useAuth.tsx'
+import { useToast } from '../ui/Toast.tsx'
+import { Button } from '../ui/Button.tsx'
+import { Input } from '../ui/Input.tsx'
+import { Select } from '../ui/Select.tsx'
+import { Card } from '../ui/Card.tsx'
+import { advisorProfileSchema, type AdvisorProfile } from '../../lib/validation.ts'
+import { EMPLOYMENT_MODELS, CONSENT_STATUSES, type EmploymentModel, type ConsentStatus } from '../../lib/constants.ts'
 
 export function ProfileForm() {
   const { advisor, refreshAdvisor } = useAuth()
@@ -15,6 +15,7 @@ export function ProfileForm() {
   const [formData, setFormData] = useState<AdvisorProfile>({
     businessName: '',
     employmentModel: 'company_advisor',
+    workingPreferences: {},
     commissionRatePercent: 15.25,
     vatAdjustmentPercent: 20.00,
     taxReservePercent: 25.00,
@@ -33,6 +34,7 @@ export function ProfileForm() {
       setFormData({
         businessName: advisor.businessName,
         employmentModel: advisor.employmentModel,
+        workingPreferences: advisor.workingPreferences,
         commissionRatePercent: advisor.commissionRatePercent,
         vatAdjustmentPercent: advisor.vatAdjustmentPercent,
         taxReservePercent: advisor.taxReservePercent,

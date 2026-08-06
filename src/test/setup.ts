@@ -8,7 +8,7 @@ const mockIDB = {
   databases: vi.fn()
 }
 
-Object.defineProperty(global, 'indexedDB', {
+Object.defineProperty(globalThis, 'indexedDB', {
   value: mockIDB,
   writable: true
 })

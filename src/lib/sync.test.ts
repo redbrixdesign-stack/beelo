@@ -6,7 +6,7 @@ import {
 } from '../lib/sync'
 import { db } from '../lib/dexie'
 
-// Mock Dexie
+// Mock Dexie - simplified to avoid type issues
 vi.mock('../lib/dexie', () => ({
   db: {
     syncQueue: {
@@ -15,9 +15,7 @@ vi.mock('../lib/dexie', () => ({
         anyOf: vi.fn(() => ({
           count: vi.fn(),
           toArray: vi.fn(),
-          limit: vi.fn(() => ({
-            toArray: vi.fn()
-          }))
+          limit: vi.fn(() => ({ toArray: vi.fn() }))
         })),
         equals: vi.fn(() => ({
           count: vi.fn(),
@@ -74,6 +72,7 @@ describe('Sync Queue', () => {
   describe('getPendingSyncCount', () => {
     it('returns count of pending and failed items', async () => {
       const mockCount = vi.fn().mockResolvedValue(5)
+      // @ts-expect-error - mock type simplification for testing
       db.syncQueue.where = vi.fn(() => ({
         anyOf: vi.fn(() => ({ count: mockCount }))
       }))
@@ -92,6 +91,7 @@ describe('Sync Queue', () => {
 
     it('returns pending when there are pending items', async () => {
       Object.defineProperty(navigator, 'onLine', { value: true, writable: true })
+      // @ts-expect-error - mock type simplification for testing
       db.syncQueue.where = vi.fn(() => ({
         anyOf: vi.fn(() => ({ count: vi.fn().mockResolvedValue(3) }))
       }))
@@ -101,6 +101,7 @@ describe('Sync Queue', () => {
 
     it('returns synced when online and no pending items', async () => {
       Object.defineProperty(navigator, 'onLine', { value: true, writable: true })
+      // @ts-expect-error - mock type simplification for testing
       db.syncQueue.where = vi.fn(() => ({
         anyOf: vi.fn(() => ({ count: vi.fn().mockResolvedValue(0) }))
       }))

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, RotateCcw, AlertCircle, CheckCircle, Clock } from 'lucide-react'
-import { useSync } from '../../hooks/useSync'
-import { Button } from '../ui/Button'
-import { Card } from '../ui/Card'
+import { useSync } from '../../hooks/useSync.tsx'
+import { Button } from '../ui/Button.tsx'
+import { Card } from '../ui/Card.tsx'
 
 export function SyncQueuePanel() {
   const { queueItems, pendingCount, retryFailed, clearSynced, isProcessing } = useSync()
@@ -19,7 +19,7 @@ export function SyncQueuePanel() {
 
   const statusIcons = {
     pending: <Clock size={16} style={{ color: 'var(--color-warning)' }} />,
-    syncing: <RotateCcw size={16} style={{ color: 'var(--color-primary)', className: 'animate-spin' }} />,
+    syncing: <RotateCcw size={16} style={{ color: 'var(--color-primary)', animation: 'spin 1s linear infinite' }} />,
     synced: <CheckCircle size={16} style={{ color: 'var(--color-success)' }} />,
     failed: <AlertCircle size={16} style={{ color: 'var(--color-error)' }} />
   }

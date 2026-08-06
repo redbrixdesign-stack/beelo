@@ -1,14 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
-import { useDexie } from '../../hooks/useDexie'
-import { useToast } from '../components/ui/Toast'
-import { Layout } from '../components/layout/Layout'
-import { Card } from '../components/ui/Card'
-import { Badge } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
+import { useAuth } from '@hooks/useAuth'
+import { useDexie } from '@hooks/useDexie'
+import { useToast } from '@components/ui/Toast'
+import { Layout } from '@components/layout/Layout'
+import { Card } from '@components/ui/Card'
+import { Badge } from '@components/ui/Badge'
+import { Button } from '@components/ui/Button'
 import { Calendar, Hash, Edit, Trash2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import type { VisitDexie } from '../../lib/dexie'
+import type { VisitDexie } from '@lib/dexie'
 
 export function VisitDetail() {
   const { id } = useParams<{ id: string }>()
@@ -34,7 +34,7 @@ export function VisitDetail() {
         .equals(advisor.id!)
         .and(v => String(v.id) === id)
         .first()
-      setVisit(data)
+      setVisit(data ?? null)
     } catch {
       console.error('Failed to load visit:')
     } finally {
@@ -58,9 +58,9 @@ export function VisitDetail() {
     }
   }
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-GB', { 
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    return dateObj.toLocaleDateString('en-GB', { 
       weekday: 'long', 
       day: 'numeric', 
       month: 'long', 

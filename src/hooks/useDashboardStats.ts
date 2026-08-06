@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useDexie } from '../../hooks/useDexie'
-import { useAuth } from '../../hooks/useAuth'
+import { useDexie } from '@hooks/useDexie'
+import { useAuth } from '@hooks/useAuth'
 
 export function useDashboardStats() {
   const { db, isReady } = useDexie()

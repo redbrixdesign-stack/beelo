@@ -19,6 +19,8 @@ export const hmrcRateSchema = z.object({
 export const advisorProfileSchema = z.object({
   businessName: z.string().min(1, 'Business name is required').max(100),
   employmentModel: z.enum(['company_advisor', 'independent']),
+  baseLocation: z.string().optional(),
+  workingPreferences: z.record(z.unknown()).default({}),
   commissionRatePercent: percentageSchema.default(15.25),
   vatAdjustmentPercent: percentageSchema.default(20.00),
   taxReservePercent: percentageSchema.default(25.00),
@@ -27,7 +29,8 @@ export const advisorProfileSchema = z.object({
   weeklyEarningsTarget: moneySchema.optional(),
   hmrcMileageRateTier1: positiveNumberSchema.default(0.55),
   hmrcMileageRateTier2: positiveNumberSchema.default(0.25),
-  hmrcMileageThresholdMiles: z.number().int().positive().default(10000)
+  hmrcMileageThresholdMiles: z.number().int().positive().default(10000),
+  consentStatus: z.enum(['pending', 'granted', 'revoked']).default('pending')
 })
 
 export const customerSchema = z.object({
@@ -55,6 +58,7 @@ export const visitSchema = z.object({
   blindCount: z.number().int().positive().optional(),
   preVisitNotes: z.string().optional(),
   companyScheduledDurationMinutes: z.number().int().positive().optional(),
+  estimatedDurationMinutes: z.number().int().positive().optional(),
   location: z.string().optional(),
   sourceDocumentId: z.string().uuid().optional(),
   outcome: z.enum([

@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
-import { useDexie } from '../../hooks/useDexie'
-import { useToast } from '../ui/Toast'
-import { enqueueSync } from '../../lib/sync'
-import { Button } from '../ui/Button'
-import { Input } from '../ui/Input'
-import { Select } from '../ui/Select'
-import { Card } from '../ui/Card'
-import { visitSchema, type VisitInput } from '../../lib/validation'
+import { useAuth } from '../../hooks/useAuth.tsx'
+import { useDexie } from '../../hooks/useDexie.tsx'
+import { useToast } from '../ui/Toast.tsx'
+import { enqueueSync } from '../../lib/sync.ts'
+import { Button } from '../ui/Button.tsx'
+import { Input } from '../ui/Input.tsx'
+import { Textarea } from '../ui/Input.tsx'
+import { Select } from '../ui/Select.tsx'
+import { Card } from '../ui/Card.tsx'
+import { visitSchema, type VisitInput } from '../../lib/validation.ts'
 import { 
   OUTCOME_TAXONOMY, 
   APPOINTMENT_TYPES, 
@@ -16,8 +17,8 @@ import {
   type OutcomeTaxonomy, 
   type AppointmentType, 
   type JobSource 
-} from '../../lib/constants'
-import type { VisitDexie } from '../../lib/dexie'
+} from '../../lib/constants.ts'
+import type { VisitDexie } from '../../lib/dexie.ts'
 
 export function VisitForm() {
   const navigate = useNavigate()
@@ -186,14 +187,14 @@ export function VisitForm() {
         ...formData,
         advisorId: advisor.id,
         customerId: parseInt(formData.customerId),
-        dateTime: new Date(formData.dateTime).toISOString(),
-        timeSlotStart: formData.timeSlotStart ? new Date(formData.timeSlotStart).toISOString() : null,
-        timeSlotEnd: formData.timeSlotEnd ? new Date(formData.timeSlotEnd).toISOString() : null,
+        dateTime: new Date(formData.dateTime),
+        timeSlotStart: formData.timeSlotStart ? new Date(formData.timeSlotStart) : undefined,
+        timeSlotEnd: formData.timeSlotEnd ? new Date(formData.timeSlotEnd) : undefined,
         sourceEnv: (import.meta.env.VITE_SOURCE_ENV || 'live'),
-        sourceDocumentId: formData.sourceDocumentId ? parseInt(formData.sourceDocumentId) : null,
+        sourceDocumentId: formData.sourceDocumentId ? parseInt(formData.sourceDocumentId) : undefined,
         estimatedDurationMinutes: formData.estimatedDurationMinutes ?? 
-          (formData.blindCount ? formData.blindCount * advisor.fullJobMinutesPerBlind : null),
-        updatedAt: now.toISOString()
+          (formData.blindCount ? formData.blindCount * advisor.fullJobMinutesPerBlind : undefined),
+        updatedAt: now
       }
 
       let visitId: number
@@ -427,25 +428,23 @@ export function VisitForm() {
           />
         </div>
 
-        <Input
+        <Textarea
           label="Pre-Visit Notes"
           value={formData.preVisitNotes}
           onChange={(e) => handleChange('preVisitNotes', e.target.value)}
           error={errors.preVisitNotes}
           placeholder="Parking, access, special instructions..."
           fullWidth
-          multiline
           rows={2}
         />
 
-        <Input
+        <Textarea
           label="General Notes"
           value={formData.notes}
           onChange={(e) => handleChange('notes', e.target.value)}
           error={errors.notes}
           placeholder="Any other notes..."
           fullWidth
-          multiline
           rows={2}
         />
       </Card>
