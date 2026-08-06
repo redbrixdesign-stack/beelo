@@ -32,8 +32,8 @@ This document is the implementation companion to `docs/Architect.md`. Architect.
 | File storage | Supabase Storage (signed URLs) | Encrypted at rest |
 | Auth | Supabase Auth (email/password + magic link) | Simple, secure |
 | Testing | Vitest + React Testing Library + Playwright (E2E from Phase 4) | Unit, integration, browser |
-| CI/CD | GitHub Actions + Netlify | Preview + production deploys |
-| Hosting | Netlify | PWA-ready |
+| CI/CD | GitHub Actions + Vercel | Preview + production deploys |
+| Hosting | Vercel | PWA-ready |
 
 **Key principle:** voice-first, single-control interaction model — no core action requires two free hands. Offline shell via Workbox; structured data via Dexie/IndexedDB, which is the local source of truth. All AI runs server-side in Edge Functions.
 

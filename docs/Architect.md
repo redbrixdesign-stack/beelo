@@ -128,7 +128,7 @@ A market check found a mature, competitive field-service-management space (Servi
 - **Backend:** Supabase (PostgreSQL, Auth, Storage, Edge Functions).
 - **AI orchestration:** Claude API for OCR, transcription, drafting, and memory inference — server-side only.
 - **Maps/route:** Lightweight map layer (e.g. MapLibre) for display; a real distance/routing engine (e.g. OSRM or a commercial directions API) is required for actual clustering/savings calculations — MapLibre alone only renders, it doesn't compute routes.
-- **Hosting:** Netlify (frontend).
+- **Hosting:** Vercel (frontend).
 
 ---
 
