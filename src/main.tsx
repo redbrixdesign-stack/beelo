@@ -5,6 +5,7 @@ import App from './App'
 import { AuthProvider } from './hooks/useAuth'
 import { DexieProvider } from './hooks/useDexie'
 import { SyncProvider } from './hooks/useSync'
+import { ToastProvider } from './components/ui/Toast'
 import './styles/globals.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <DexieProvider>
           <SyncProvider>
-            <App />
+            <ToastProvider>
+              <App />
+            </ToastProvider>
           </SyncProvider>
         </DexieProvider>
       </AuthProvider>
