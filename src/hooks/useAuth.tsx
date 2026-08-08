@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from '../lib/supabase'
 import { getCurrentUser, signOut as signOutApi } from '../lib/auth'
 import { db, type AdvisorDexie } from '../lib/dexie'
+import { getDefaultSourceEnv } from '../lib/dexie'
 
 type SupabaseUser = Awaited<ReturnType<typeof supabase.auth.getUser>> extends { data: { user: infer U } } ? U : null
 
@@ -33,6 +34,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const advisorData = await db.advisors.where('authUserId').equals(currentUser.id).first()
           if (advisorData) {
             setAdvisor(advisorData)
+          } else {
+            // Create advisor profile for new user
+            const sourceEnv = (import.meta.env.VITE_SOURCE_ENV as 'demo' | 'qa' | 'live') || 'live'
+            const now = new Date()
+            const advisorId = await db.advisors.add({
+              authUserId: currentUser.id,
+              businessName: '',
+              employmentModel: 'company_advisor',
+              baseLocation: '',
+              workingPreferences: {},
+              commissionRatePercent: 15.25,
+              vatAdjustmentPercent: 20.00,
+              taxReservePercent: 20.00,
+              installOnlyMinutesPerBlind: 16,
+              fullJobMinutesPerBlind: 33,
+              weeklyEarningsTarget: null,
+              hmrcMileageRateTier1: 0.55,
+              hmrcMileageRateTier2: 0.25,
+              hmrcMileageThresholdMiles: 10000,
+              consentStatus: 'pending',
+              sourceEnv: (import.meta.env.VITE_SOURCE_ENV as 'demo' | 'qa' | 'live') || 'live',
+              createdAt: now,
+              updatedAt: now,
+            } as any)
+            
+            const newAdvisor = await db.advisors.get(advisorId)
+            if (newAdvisor) setAdvisor(newAdvisor)
           }
         }
         setLoading(false)
@@ -48,7 +76,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (session?.user) {
         const advisorData = await db.advisors.where('authUserId').equals(session.user.id).first()
-        setAdvisor(advisorData ?? null)
+        if (advisorData) {
+          setAdvisor(advisorData)
+        } else {
+          // Create advisor profile for new user
+          const now = new Date()
+          const advisorId = await db.advisors.add({
+            authUserId: session.user.id,
+            businessName: '',
+            employmentModel: 'company_advisor',
+            baseLocation: '',
+            workingPreferences: {},
+            commissionRatePercent: 15.25,
+            vatAdjustmentPercent: 20.00,
+            taxReservePercent: 20.00,
+            installOnlyMinutesPerBlind: 16,
+            fullJobMinutesPerBlind: 33,
+            weeklyEarningsTarget: null,
+            hmrcMileageRateTier1: 0.55,
+            hmrcMileageRateTier2: 0.25,
+            hmrcMileageThresholdMiles: 10000,
+            consentStatus: 'pending',
+            sourceEnv: (import.meta.env.VITE_SOURCE_ENV as 'demo' | 'qa' | 'live') || 'live',
+            createdAt: now,
+            updatedAt: now,
+          } as any)
+          
+          const newAdvisor = await db.advisors.get(advisorId)
+          if (newAdvisor) setAdvisor(newAdvisor)
+        }
       } else {
         setAdvisor(null)
       }
