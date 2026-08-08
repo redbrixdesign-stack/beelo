@@ -1,0 +1,165 @@
+// Supabase Edge Function for Commission Statement OCR
+// Extracts commission line items from commission statement images/PDFs
+
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const { document_id, image_path } = await req.json()
+    
+    if (!document_id || !image_path) {
+      return new Response(
+        JSON.stringify({ error: 'Missing document_id or image_path' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+
+    const { data: imageData, error: downloadError } = await supabase.storage
+      .from('documents')
+      .download(image_path)
+
+    if (downloadError) {
+      throw new Error(`Failed to download image: ${downloadError.message}`)
+    }
+
+    const imageBuffer = await imageData.arrayBuffer()
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
+
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': Deno.env.get('CLAUDE_API_KEY')!,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 4096,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `You are an OCR service for UK blinds advisor commission statements. Extract commission line items from this statement.
+
+Return ONLY valid JSON with this exact structure:
+{
+  "lineItems": [
+    {
+      "lineDate": "ISO date string or null",
+      "invoiceNumber": "string or null",
+      "jobCode": "string",
+      "customerNumber": "string or null",
+      "customerName": "string or null",
+      "lineType": "sale|service|dor_penalty|refit|adjustment",
+      "commissionRatePercent": number or null,
+      "orderValueIncVat": number or null,
+      "orderValueExcVat": number or null,
+      "amountIncVat": number or null,
+      "amountExcVat": number or null
+    }
+  ],
+  "confidence": 0.0-1.0,
+  "modelVersion": "claude-3-haiku-20240307",
+  "promptVersion": "commission-ocr-v1"
+}
+
+Extraction rules:
+- Each row in the commission table = one line item
+- lineDate: date of the line (commission statement date or invoice date)
+- invoiceNumber: invoice/reference number
+- jobCode: the job code (e.g. "HIL/123456")
+- customerNumber: customer account number if shown
+- customerName: customer name if shown
+- lineType: "sale" (standard sale), "service" (service call), "dor_penalty" (DOR penalty), "refit" (refit work), "adjustment" (manual adjustment)
+- commissionRatePercent: commission rate as percentage (e.g. 10 for 10%)
+- orderValueIncVat: order value including VAT in GBP
+- orderValueExcVat: order value excluding VAT in GBP
+- amountIncVat: commission amount including VAT in GBP
+- amountExcVat: commission amount excluding VAT in GBP
+- confidence: your confidence in extraction accuracy (0.0-1.0)
+
+UK commission statements typically show: Date, Invoice, Job Code, Customer, Type, Rate%, Order Value, Commission Amount.
+Handle £ symbols, commas in numbers, and negative values for adjustments/penalties.
+Be precise with financial figures.`
+            },
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: 'image/jpeg',
+                data: base64Image
+              }
+            }
+          ]
+        }],
+      }),
+    })
+
+    if (!claudeResponse.ok) {
+      const errorText = await claudeResponse.text()
+      throw new Error(`Claude API error: ${claudeResponse.status} ${errorText}`)
+    }
+
+    const claudeData = await claudeResponse.json()
+    const ocrText = claudeData.content[0]?.text || '{}'
+    
+    let result
+    try {
+      result = JSON.parse(ocrText)
+    } catch {
+      const jsonMatch = ocrText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0])
+      } else {
+        throw new Error('Failed to parse OCR result')
+      }
+    }
+
+    const normalizedResult = {
+      lineItems: Array.isArray(result.lineItems) ? result.lineItems.map((item: any) => ({
+        lineDate: item.lineDate || null,
+        invoiceNumber: item.invoiceNumber || null,
+        jobCode: item.jobCode || '',
+        customerNumber: item.customerNumber || null,
+        customerName: item.customerName || null,
+        lineType: ['sale', 'service', 'dor_penalty', 'refit', 'adjustment'].includes(item.lineType) ? item.lineType : 'sale',
+        commissionRatePercent: typeof item.commissionRatePercent === 'number' ? item.commissionRatePercent : null,
+        orderValueIncVat: typeof item.orderValueIncVat === 'number' ? item.orderValueIncVat : null,
+        orderValueExcVat: typeof item.orderValueExcVat === 'number' ? item.orderValueExcVat : null,
+        amountIncVat: typeof item.amountIncVat === 'number' ? item.amountIncVat : null,
+        amountExcVat: typeof item.amountExcVat === 'number' ? item.amountExcVat : null,
+      })) : [],
+      confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
+      modelVersion: result.modelVersion || 'claude-3-haiku-20240307',
+      promptVersion: result.promptVersion || 'commission-ocr-v1',
+    }
+
+    return new Response(
+      JSON.stringify(normalizedResult),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error) {
+    console.error('Commission OCR error:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+})

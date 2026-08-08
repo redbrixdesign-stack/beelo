@@ -104,6 +104,27 @@ export type MessageDraftStatus = typeof MESSAGE_DRAFT_STATUSES[number]
 export const SCHEDULE_SUGGESTION_STATUSES = ['pending', 'accepted', 'dismissed'] as const
 export type ScheduleSuggestionStatus = typeof SCHEDULE_SUGGESTION_STATUSES[number]
 
+export const SCHEDULE_RISK_LEVELS = ['low', 'medium', 'high'] as const
+export type ScheduleRiskLevel = typeof SCHEDULE_RISK_LEVELS[number]
+
+export const INCIDENT_CROSS_CHECK_STATUSES = ['pending', 'verified', 'disputed'] as const
+export type IncidentCrossCheckStatus = typeof INCIDENT_CROSS_CHECK_STATUSES[number]
+
+export const COMMISSION_LINE_TYPES = ['sale', 'service', 'dor_penalty', 'refit', 'adjustment'] as const
+export type CommissionLineType = typeof COMMISSION_LINE_TYPES[number]
+
+export const EXPENSE_CATEGORIES = ['fuel', 'parking', 'materials', 'tools', 'subsistence', 'accommodation', 'training', 'insurance', 'phone', 'software', 'other'] as const
+export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number]
+
+export const DELIVERY_ITEM_STATUSES = ['delivered', 'pending', 'damaged', 'returned'] as const
+export type DeliveryItemStatus = typeof DELIVERY_ITEM_STATUSES[number]
+
+export const ONBOARDING_STEPS = ['welcome', 'profile', 'permissions', 'environment', 'tutorial', 'complete'] as const
+export type OnboardingStep = typeof ONBOARDING_STEPS[number]
+
+export const SETTING_KEYS = ['hmrc_mileage_rate_tier1', 'hmrc_mileage_rate_tier2', 'hmrc_mileage_threshold_miles', 'install_only_minutes_per_blind', 'full_job_minutes_per_blind', 'weekly_earnings_target', 'vat_adjustment_percent', 'tax_reserve_percent', 'commission_rate_percent', 'source_env'] as const
+export type SettingKey = typeof SETTING_KEYS[number]
+
 export function isValidOutcome(value: string): value is OutcomeTaxonomy {
   return OUTCOME_TAXONOMY.includes(value as OutcomeTaxonomy)
 }
@@ -118,4 +139,24 @@ export function isValidJobSource(value: string): value is JobSource {
 
 export function isValidSourceEnv(value: string): value is SourceEnv {
   return SOURCE_ENVS.includes(value as SourceEnv)
+}
+
+export function isValidIncidentCrossCheck(value: string): value is IncidentCrossCheckStatus {
+  return INCIDENT_CROSS_CHECK_STATUSES.includes(value as IncidentCrossCheckStatus)
+}
+
+export function isValidExpenseCategory(value: string): value is ExpenseCategory {
+  return EXPENSE_CATEGORIES.includes(value as ExpenseCategory)
+}
+
+export function isValidDeliveryItemStatus(value: string): value is DeliveryItemStatus {
+  return DELIVERY_ITEM_STATUSES.includes(value as DeliveryItemStatus)
+}
+
+export function isValidOnboardingStep(value: string): value is OnboardingStep {
+  return ONBOARDING_STEPS.includes(value as OnboardingStep)
+}
+
+export function isValidSettingKey(value: string): value is SettingKey {
+  return SETTING_KEYS.includes(value as SettingKey)
 }

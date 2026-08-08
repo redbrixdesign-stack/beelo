@@ -8,7 +8,10 @@ import type {
   FitStatus, IncidentType, IncidentCause, IncidentResolution,
   LogisticsLeg, ServiceCallOutcome, PenaltyTier,
   FitMethod, CustomerStatus, TripStatus,
-  MessageDraftStatus, ScheduleSuggestionStatus
+  MessageDraftStatus, ScheduleSuggestionStatus,
+  ScheduleRiskLevel,
+  IncidentCrossCheckStatus, CommissionLineType,
+  ExpenseCategory, DeliveryItemStatus, OnboardingStep, SettingKey
 } from './constants'
 
 export interface AdvisorDexie {
@@ -139,6 +142,11 @@ export interface DocumentDexie {
   matchStatus: DocumentMatchStatus
   sourceEnv: SourceEnv
   additionalNotes?: string
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  extractedAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -153,6 +161,11 @@ export interface FitLineItemDexie {
   fitStatus: FitStatus
   refitDate?: Date
   sourceEnv: SourceEnv
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  extractedAt?: Date
   createdAt: Date
 }
 
@@ -184,6 +197,16 @@ export interface IncidentDexie {
   remakeMaterialCost?: number
   remakeLabourAbsorbed?: number
   sourceEnv: SourceEnv
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  sourceDocumentId?: number
+  fitLineItemId?: number
+  detectedAt?: Date
+  crossCheckStatus?: IncidentCrossCheckStatus
+  commissionRateExpected?: number
+  commissionRateActual?: number
   createdAt: Date
   updatedAt: Date
 }
@@ -201,6 +224,11 @@ export interface QuoteLineItemDexie {
   unitPrice?: number
   lineTotal?: number
   sourceEnv: SourceEnv
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  extractedAt?: Date
   createdAt: Date
 }
 
@@ -212,13 +240,18 @@ export interface CommissionLineItemDexie {
   jobCode: string
   customerNumber?: string
   customerName?: string
-  lineType?: string
+  lineType?: CommissionLineType
   commissionRatePercent?: number
   orderValueIncVat?: number
   orderValueExcVat?: number
   amountIncVat?: number
   amountExcVat?: number
   sourceEnv: SourceEnv
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  extractedAt?: Date
   createdAt: Date
 }
 
@@ -243,12 +276,91 @@ export interface ExpenseDexie {
   date: Date
   amount: number
   vatAmount?: number
-  category?: string
+  category?: ExpenseCategory
   photoPath?: string
   sourceDocumentId?: number
   sourceEnv: SourceEnv
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  extractedAt?: Date
   createdAt: Date
   updatedAt: Date
+}
+
+export interface DeliveryDropNoteDexie {
+  id?: number
+  advisorId: number
+  documentId: number
+  jobCode: string
+  customerNumber: string
+  deliveryDate: Date
+  items: Array<{
+    lineNumber: number
+    description: string
+    quantity: number
+    status: DeliveryItemStatus
+  }>
+  fanOutTargets: string[]
+  sourceEnv: SourceEnv
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  extractedAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface SettingDexie {
+  id?: number
+  advisorId: number
+  key: SettingKey
+  value: string
+  sourceEnv: SourceEnv
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface DORPredictionDexie {
+  id?: number
+  advisorId: number
+  weekStart: Date
+  weekEnd: Date
+  predictedDORRate: number
+  currentDORRate: number
+  blindsAtRisk: number
+  estimatedPenalty: number
+  confidence: number
+  modelVersion?: string
+  promptVersion?: string
+  generatedAt: Date
+  sourceEnv: SourceEnv
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface OnboardingStateDexie {
+  id?: number
+  advisorId: number
+  currentStep: number
+  completedSteps: number[]
+  skippedSteps: number[]
+  sourceEnv: SourceEnv
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface PilotMetricDexie {
+  id?: number
+  advisorId: number
+  date: Date
+  metricName: string
+  metricValue: number
+  metadata?: Record<string, unknown>
+  sourceEnv: SourceEnv
+  createdAt: Date
 }
 
 export interface MessageDraftDexie {
@@ -332,6 +444,11 @@ export class BeeloDB extends Dexie {
   commissionLineItems!: Table<CommissionLineItemDexie>
   trips!: Table<TripDexie>
   expenses!: Table<ExpenseDexie>
+  deliveryDropNotes!: Table<DeliveryDropNoteDexie>
+  settings!: Table<SettingDexie>
+  dorPredictions!: Table<DORPredictionDexie>
+  onboardingState!: Table<OnboardingStateDexie>
+  pilotMetrics!: Table<PilotMetricDexie>
   messageDrafts!: Table<MessageDraftDexie>
   scheduleSuggestions!: Table<ScheduleSuggestionDexie>
   measurementChecks!: Table<MeasurementCheckDexie>
@@ -346,13 +463,18 @@ export class BeeloDB extends Dexie {
       leads: '++id, advisorId, name, phone, landedAt, status, contactAttemptsCount, source, sourceEnv, createdAt, updatedAt, [advisorId]',
       callAttempts: '++id, leadId, initiatedAt, outcome, voiceNoteId, sourceEnv, createdAt, [leadId]',
       voiceNotes: '++id, advisorId, audioPath, recordedAt, durationSeconds, triggerMethod, status, transcript, extractedBlindCount, extractedParkingNotes, extractedAccessNotes, extractedNameSpoken, linkedAppointmentScreenshotDocumentId, matchedVisitId, matchedCustomerId, matchMethod, leadId, sourceEnv, createdAt, updatedAt, [advisorId+status], [advisorId]',
-      documents: '++id, advisorId, type, subtype, imagePath, parsedJson, status, matchStatus, sourceEnv, additionalNotes, createdAt, updatedAt, [advisorId+type], [advisorId+status], [advisorId]',
-      fitLineItems: '++id, documentId, jobCode, lineNumber, room, position, fitStatus, refitDate, sourceEnv, createdAt, [documentId], [jobCode]',
-      incidents: '++id, advisorId, visitId, customerId, type, cause, causeDetail, countsTowardDor, discoveredAt, description, resolutionStatus, photos, notes, commissionLineItemId, logisticsLeg, originalFitVisitId, withinWarrantyPeriod, serviceCallOutcome, dorRateAtTimePercent, penaltyTier, blindsAffectedCount, penaltyAmount, saleValueLost, clientAgreedToRemake, remakeMaterialCost, remakeLabourAbsorbed, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',
-      quoteLineItems: '++id, documentId, room, position, description, range, colour, widthMm, quantity, unitPrice, lineTotal, sourceEnv, createdAt, [documentId]',
-      commissionLineItems: '++id, commissionStatementDocumentId, lineDate, invoiceNumber, jobCode, customerNumber, customerName, lineType, commissionRatePercent, orderValueIncVat, orderValueExcVat, amountIncVat, amountExcVat, sourceEnv, createdAt, [commissionStatementDocumentId], [jobCode]',
+      documents: '++id, advisorId, type, subtype, imagePath, parsedJson, status, matchStatus, sourceEnv, additionalNotes, modelVersion, promptVersion, confidence, extractedAt, createdAt, updatedAt, [advisorId+type], [advisorId+status], [advisorId]',
+      fitLineItems: '++id, documentId, jobCode, lineNumber, room, position, fitStatus, refitDate, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [documentId], [jobCode]',
+      incidents: '++id, advisorId, visitId, customerId, type, cause, causeDetail, countsTowardDor, discoveredAt, description, resolutionStatus, photos, notes, commissionLineItemId, logisticsLeg, originalFitVisitId, withinWarrantyPeriod, serviceCallOutcome, dorRateAtTimePercent, penaltyTier, blindsAffectedCount, penaltyAmount, saleValueLost, clientAgreedToRemake, remakeMaterialCost, remakeLabourAbsorbed, sourceEnv, modelVersion, promptVersion, confidence, sourceDocumentId, fitLineItemId, detectedAt, crossCheckStatus, commissionRateExpected, commissionRateActual, createdAt, updatedAt, [advisorId], [visitId]',
+      quoteLineItems: '++id, documentId, room, position, description, range, colour, widthMm, quantity, unitPrice, lineTotal, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [documentId]',
+      commissionLineItems: '++id, commissionStatementDocumentId, lineDate, invoiceNumber, jobCode, customerNumber, customerName, lineType, commissionRatePercent, orderValueIncVat, orderValueExcVat, amountIncVat, amountExcVat, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [commissionStatementDocumentId], [jobCode]',
       trips: '++id, advisorId, visitId, startedAt, endedAt, distanceMiles, pathPoints, status, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',
-      expenses: '++id, advisorId, merchant, date, amount, vatAmount, category, photoPath, sourceDocumentId, sourceEnv, createdAt, updatedAt, [advisorId+date], [advisorId]',
+      expenses: '++id, advisorId, merchant, date, amount, vatAmount, category, photoPath, sourceDocumentId, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, updatedAt, [advisorId+date], [advisorId]',
+      deliveryDropNotes: '++id, advisorId, documentId, jobCode, customerNumber, deliveryDate, items, fanOutTargets, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, updatedAt, [advisorId+deliveryDate], [advisorId]',
+      settings: '++id, advisorId, key, value, sourceEnv, createdAt, updatedAt, [advisorId+key]',
+      dorPredictions: '++id, advisorId, weekStart, weekEnd, predictedDORRate, currentDORRate, blindsAtRisk, estimatedPenalty, confidence, modelVersion, promptVersion, generatedAt, sourceEnv, createdAt, updatedAt, [advisorId+weekStart], [advisorId]',
+      onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, sourceEnv, createdAt, updatedAt, [advisorId]',
+      pilotMetrics: '++id, advisorId, date, metricName, metricValue, metadata, sourceEnv, createdAt, [advisorId+date], [advisorId]',
       messageDrafts: '++id, advisorId, relatedType, relatedId, draftText, status, sourceEnv, createdAt, updatedAt, [advisorId]',
       scheduleSuggestions: '++id, advisorId, date, suggestionText, affectedVisitIds, estimatedSavingMiles, estimatedSavingMinutes, scheduleRiskFlag, status, sourceEnv, createdAt, updatedAt, [advisorId+date], [advisorId]',
       measurementChecks: '++id, advisorId, visitId, windowId, blindType, fitMethod, widthTopCm, widthMiddleCm, widthBottomCm, workingWidthCm, dropLeftCm, dropMiddleCm, dropRightCm, workingDropCm, diagonalTlBrCm, diagonalTrBlCm, diagonalDiffCm, toleranceCm, isSquare, passesTolerance, notes, photos, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',

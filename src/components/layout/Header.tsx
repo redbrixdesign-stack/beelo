@@ -1,7 +1,7 @@
 import { Menu } from 'lucide-react'
-import { useSync } from '../../hooks/useSync.tsx'
-import { useOnline } from '../../hooks/useOnline.tsx'
-import { Badge } from '../ui/Badge.tsx'
+import { useSync } from '../../hooks/useSync'
+import { useOnline } from '../../hooks/useOnline'
+import { Badge } from '../ui/Badge'
 
 interface HeaderProps {
   title: string

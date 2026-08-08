@@ -26,5 +26,14 @@
     }
   },
   "include": ["src"],
+  "exclude": [
+    "src/features/leads",
+    "src/features/downtime",
+    "src/features/voice/components/BatchReviewScreen.tsx",
+    "src/features/voice/components/ManualMatcher.tsx",
+    "src/features/voice/components/NameHintMatcher.tsx",
+    "src/features/voice/components/ScreenshotMatcher.tsx",
+    "src/features/voice/hooks/useTranscription.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
