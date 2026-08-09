@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { getCurrentUser, signOut as signOutApi } from '../lib/auth'
+import { getCurrentUser, signOut as signOutApi, syncAdvisorToSupabase } from '../lib/auth'
 import { db, type AdvisorDexie } from '../lib/dexie'
 import { getDefaultSourceEnv } from '../lib/dexie'
 
@@ -60,7 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } as any)
             
             const newAdvisor = await db.advisors.get(advisorId)
-            if (newAdvisor) setAdvisor(newAdvisor)
+            if (newAdvisor) {
+              setAdvisor(newAdvisor)
+              // Sync to Supabase to get internal UUID
+              try {
+                await syncAdvisorToSupabase(newAdvisor)
+                const syncedAdvisor = await db.advisors.get(advisorId)
+                if (syncedAdvisor) setAdvisor(syncedAdvisor)
+              } catch (err) {
+                console.warn('Failed to sync advisor to Supabase:', err)
+              }
+            }
           }
         }
         setLoading(false)
@@ -103,7 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } as any)
           
           const newAdvisor = await db.advisors.get(advisorId)
-          if (newAdvisor) setAdvisor(newAdvisor)
+          if (newAdvisor) {
+            setAdvisor(newAdvisor)
+            // Sync to Supabase to get internal UUID
+            try {
+              await syncAdvisorToSupabase(newAdvisor)
+              const syncedAdvisor = await db.advisors.get(advisorId)
+              if (syncedAdvisor) setAdvisor(syncedAdvisor)
+            } catch (err) {
+              console.warn('Failed to sync advisor to Supabase:', err)
+            }
+          }
         }
       } else {
         setAdvisor(null)

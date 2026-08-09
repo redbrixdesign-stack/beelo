@@ -60,7 +60,13 @@ function transformPayloadForSupabase(payload: Record<string, unknown>, advisor: 
   }
   
   if (advisor && transformed.advisor_id !== undefined) {
-    transformed.advisor_id = advisor.authUserId
+    // Use the Supabase internal UUID (supabaseId), not authUserId
+    // Fallback to authUserId if supabaseId not yet synced (first run)
+    const advisorId = advisor.supabaseId || advisor.authUserId
+    if (!advisor.supabaseId) {
+      console.warn('Advisor supabaseId not set, using authUserId as fallback. Run syncAdvisorToSupabase first.')
+    }
+    transformed.advisor_id = advisorId
   }
   
   for (const [key, value] of Object.entries(transformed)) {

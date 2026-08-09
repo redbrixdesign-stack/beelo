@@ -16,6 +16,7 @@ import type {
 
 export interface AdvisorDexie {
   id?: number
+  supabaseId?: string  // UUID from Supabase advisors.id
   authUserId: string
   businessName: string
   employmentModel: EmploymentModel
@@ -491,7 +492,7 @@ export class BeeloDB extends Dexie {
 constructor() {
     super('BeeloDB')
     this.version(2).stores({
-      advisors: '++id, authUserId, businessName, employmentModel, baseLocation, workingPreferences, commissionRatePercent, vatAdjustmentPercent, taxReservePercent, installOnlyMinutesPerBlind, fullJobMinutesPerBlind, weeklyEarningsTarget, hmrcMileageRateTier1, hmrcMileageRateTier2, hmrcMileageThresholdMiles, consentStatus, sourceEnv, createdAt, updatedAt, [authUserId]',
+      advisors: '++id, supabaseId, authUserId, businessName, employmentModel, baseLocation, workingPreferences, commissionRatePercent, vatAdjustmentPercent, taxReservePercent, installOnlyMinutesPerBlind, fullJobMinutesPerBlind, weeklyEarningsTarget, hmrcMileageRateTier1, hmrcMileageRateTier2, hmrcMileageThresholdMiles, consentStatus, sourceEnv, createdAt, updatedAt, [authUserId]',
       customers: '++id, advisorId, customerNumber, phone, postcode, address, displayName, contactPreferences, history, status, sourceEnv, createdAt, updatedAt, [advisorId+customerNumber], [advisorId]',
       visits: '++id, advisorId, customerId, customerNumber, appointmentNumber, jobCode, orderNumber, appointmentType, jobSource, dateTime, timeSlotStart, timeSlotEnd, status, contactedCustomer, blindCount, preVisitNotes, companyScheduledDurationMinutes, estimatedDurationMinutes, location, sourceDocumentId, sourceEnv, outcome, outcomeValue, discountPercent, commissionAmount, notes, createdAt, updatedAt, [advisorId+jobCode], [advisorId+dateTime], [advisorId]',
       leads: '++id, advisorId, name, phone, landedAt, status, contactAttemptsCount, source, sourceEnv, createdAt, updatedAt, [advisorId]',
@@ -517,7 +518,7 @@ constructor() {
       syncQueue: '++id, entityType, entityId, operation, payload, status, retryCount, lastError, createdAt, [entityType+entityId], [status]'
     })
     this.version(1).stores({
-      advisors: '++id, authUserId, businessName, employmentModel, baseLocation, workingPreferences, commissionRatePercent, vatAdjustmentPercent, taxReservePercent, installOnlyMinutesPerBlind, fullJobMinutesPerBlind, weeklyEarningsTarget, hmrcMileageRateTier1, hmrcMileageRateTier2, hmrcMileageThresholdMiles, consentStatus, sourceEnv, createdAt, updatedAt, [authUserId]',
+      advisors: '++id, supabaseId, authUserId, businessName, employmentModel, baseLocation, workingPreferences, commissionRatePercent, vatAdjustmentPercent, taxReservePercent, installOnlyMinutesPerBlind, fullJobMinutesPerBlind, weeklyEarningsTarget, hmrcMileageRateTier1, hmrcMileageRateTier2, hmrcMileageThresholdMiles, consentStatus, sourceEnv, createdAt, updatedAt, [authUserId]',
       customers: '++id, advisorId, customerNumber, phone, postcode, address, displayName, contactPreferences, history, status, sourceEnv, createdAt, updatedAt, [advisorId+customerNumber], [advisorId]',
       visits: '++id, advisorId, customerId, customerNumber, appointmentNumber, jobCode, orderNumber, appointmentType, jobSource, dateTime, timeSlotStart, timeSlotEnd, status, contactedCustomer, blindCount, preVisitNotes, companyScheduledDurationMinutes, estimatedDurationMinutes, location, sourceDocumentId, sourceEnv, outcome, outcomeValue, discountPercent, commissionAmount, notes, createdAt, updatedAt, [advisorId+jobCode], [advisorId+dateTime], [advisorId]',
       leads: '++id, advisorId, name, phone, landedAt, status, contactAttemptsCount, source, sourceEnv, createdAt, updatedAt, [advisorId]',

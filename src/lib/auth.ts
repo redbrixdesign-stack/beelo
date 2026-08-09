@@ -66,7 +66,17 @@ export async function createAdvisorProfile(profile: AdvisorProfile, authUserId: 
   }
 
   const localId = await db.advisors.add(advisor as AdvisorDexie)
-  return { ...advisor, id: localId }
+  const newAdvisor = { ...advisor, id: localId }
+  
+  // Sync to Supabase to get internal UUID
+  try {
+    await syncAdvisorToSupabase(newAdvisor)
+    const syncedAdvisor = await db.advisors.get(localId)
+    return syncedAdvisor || newAdvisor
+  } catch (err) {
+    console.warn('Failed to sync advisor to Supabase:', err)
+    return newAdvisor
+  }
 }
 
 export async function getAdvisorByAuthUserId(authUserId: string) {
@@ -85,10 +95,9 @@ export async function updateAdvisorProfile(id: number, updates: Partial<AdvisorP
 }
 
 export async function syncAdvisorToSupabase(advisor: AdvisorDexie) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('advisors')
     .upsert({
-      id: advisor.id,
       auth_user_id: advisor.authUserId,
       business_name: advisor.businessName,
       employment_model: advisor.employmentModel,
@@ -107,8 +116,16 @@ export async function syncAdvisorToSupabase(advisor: AdvisorDexie) {
       source_env: advisor.sourceEnv,
       created_at: advisor.createdAt.toISOString(),
       updated_at: advisor.updatedAt.toISOString()
-    }, { onConflict: 'id' })
+    }, { onConflict: 'auth_user_id' })
+    .select('id')
+    .single()
   
   if (error) throw error
+  
+  // Store the Supabase internal UUID locally
+  if (data?.id && advisor.id) {
+    await db.advisors.update(advisor.id, { supabaseId: data.id })
+  }
+  
   return true
 }
