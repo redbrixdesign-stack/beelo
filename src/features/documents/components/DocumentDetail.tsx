@@ -137,7 +137,7 @@ export function DocumentDetail() {
               <Button variant="ghost" onClick={() => navigate(`/documents/${document.id}/edit`)} leftIcon={<Edit size={16} />}>
                 Edit
               </Button>
-              <Button variant="ghost" onClick={handleDelete} leftIcon={<Trash2 size={16} />} disabled={deleting}>
+              <Button variant="ghost" onClick={handleDelete} leftIcon={<Trash2 size={16} />} disabled={deleting} loading={deleting}>
                 Delete
               </Button>
             </div>

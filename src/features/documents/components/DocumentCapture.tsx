@@ -152,6 +152,7 @@ export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
         variant="primary"
         onClick={handleSubmit}
         disabled={!preview || disabled || uploading}
+        loading={uploading}
         fullWidth
         leftIcon={uploading ? undefined : <Upload size={16} />}
         style={{ marginTop: 'var(--spacing-lg)' }}

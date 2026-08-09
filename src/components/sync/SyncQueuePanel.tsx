@@ -91,10 +91,10 @@ export function SyncQueuePanel() {
           ))}
 
           <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)', paddingTop: 'var(--spacing-sm)', borderTop: '1px solid var(--color-border)' }}>
-            <Button variant="secondary" size="sm" onClick={retryFailed} disabled={isProcessing} fullWidth>
+            <Button variant="secondary" size="sm" onClick={retryFailed} disabled={isProcessing} loading={isProcessing} fullWidth>
               <RotateCcw size={14} /> Retry All Failed
             </Button>
-            <Button variant="ghost" size="sm" onClick={clearSynced} fullWidth>
+            <Button variant="ghost" size="sm" onClick={clearSynced} disabled={isProcessing} loading={isProcessing} fullWidth>
               <CheckCircle size={14} /> Clear Synced
             </Button>
           </div>
