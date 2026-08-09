@@ -20,6 +20,8 @@ import { Leads } from './features/leads/components/LeadList'
 import { LeadDetail } from './features/leads/components/LeadDetail'
 import { LeadForm } from './features/leads/components/LeadForm'
 import { SettingsScreen } from './features/settings/components/SettingsScreen'
+import { MeasurementCheckForm } from './features/measurements/components/MeasurementCheckForm'
+import { MeasurementCheckList } from './features/measurements/components/MeasurementCheckList'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -92,6 +94,30 @@ export default function App() {
         <ProtectedRoute>
           <Layout title="Edit Visit" showBack onBack={() => window.history.back()}>
             <VisitForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/visits/:visitId/measurements" element={
+        <ProtectedRoute>
+          <Layout title="Measurements" showBack onBack={() => window.history.back()}>
+            <MeasurementCheckList visitId={parseInt(window.location.pathname.split('/')[2])} checks={[]} onNew={() => window.history.pushState(null, '', `/visits/${window.location.pathname.split('/')[2]}/measurements/new`)} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/visits/:visitId/measurements/new" element={
+        <ProtectedRoute>
+          <Layout title="New Measurement" showBack onBack={() => window.history.back()}>
+            <MeasurementCheckForm visitId={parseInt(window.location.pathname.split('/')[2])} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/visits/:visitId/measurements/:id" element={
+        <ProtectedRoute>
+          <Layout title="Edit Measurement" showBack onBack={() => window.history.back()}>
+            <MeasurementCheckForm visitId={parseInt(window.location.pathname.split('/')[2])} checkId={parseInt(window.location.pathname.split('/')[4])} />
           </Layout>
         </ProtectedRoute>
       } />
