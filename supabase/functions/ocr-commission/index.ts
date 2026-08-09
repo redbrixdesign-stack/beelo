@@ -37,8 +37,16 @@ serve(async (req) => {
       throw new Error(`Failed to download image: ${downloadError.message}`)
     }
 
-const imageBuffer = await imageData.arrayBuffer()
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
+    const imageBuffer = await imageData.arrayBuffer()
+    // Use chunked base64 encoding to avoid stack overflow on large images
+    const bytes = new Uint8Array(imageBuffer)
+    const chunkSize = 0x8000
+    let base64Image = ''
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize)
+      base64Image += String.fromCharCode.apply(null, chunk)
+    }
+    base64Image = btoa(base64Image)
 
     // Call Claude API with timeout
     const controller = new AbortController()
