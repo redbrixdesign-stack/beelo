@@ -239,7 +239,10 @@ export function useOCR() {
           const edgeFunctionName = EDGE_FUNCTION_MAP[documentType]
           
           if (!edgeFunctionName) {
-            await db.documents.update(doc.id!, { status: 'error', updatedAt: new Date() })
+            await db.documents.update(doc.id!, { 
+              ocrError: 'No OCR function configured for this document type',
+              updatedAt: new Date(),
+            })
             continue
           }
 
@@ -423,7 +426,7 @@ export function useOCR() {
         } catch (err) {
           console.error(`Failed to process document ${doc.id}:`, err)
           await db.documents.update(doc.id!, {
-            status: 'error',
+            ocrError: err instanceof Error ? err.message : 'Unknown OCR error',
             updatedAt: new Date(),
           })
         }

@@ -148,6 +148,8 @@ export interface DocumentDexie {
   promptVersion?: string
   confidence?: number
   extractedAt?: Date
+  // OCR processing error (separate from document status)
+  ocrError?: string
   createdAt: Date
   updatedAt: Date
 }

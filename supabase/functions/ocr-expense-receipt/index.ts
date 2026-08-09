@@ -45,6 +45,10 @@ serve(async (req) => {
     const imageBuffer = await imageData.arrayBuffer()
     const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
 
+    // Call Claude API with timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 min timeout
+
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -107,7 +111,10 @@ Be precise with financial figures.`
           ]
         }],
       }),
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
 
     if (!claudeResponse.ok) {
       const errorText = await claudeResponse.text()
@@ -158,6 +165,15 @@ Be precise with financial figures.`
 
   } catch (error) {
     console.error('Expense receipt OCR error:', error)
+    
+    // Handle timeout specifically
+    if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+      return new Response(
+        JSON.stringify({ error: 'OCR processing timed out. Please try again with a clearer image.' }),
+        { status: 408, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

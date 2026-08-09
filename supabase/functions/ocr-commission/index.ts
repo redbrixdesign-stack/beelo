@@ -37,8 +37,12 @@ serve(async (req) => {
       throw new Error(`Failed to download image: ${downloadError.message}`)
     }
 
-    const imageBuffer = await imageData.arrayBuffer()
+const imageBuffer = await imageData.arrayBuffer()
     const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
+
+    // Call Claude API with timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 min timeout
 
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -67,7 +71,7 @@ Return ONLY valid JSON with this exact structure:
       "customerNumber": "string or null",
       "customerName": "string or null",
       "lineType": "sale|service|dor_penalty|refit|adjustment",
-      "lineTypeRaw": "string or null",  // RAW reason text from statement (e.g. "Mismeasure", "Wrong Colour", "Wrong Order", "Installation Damage")
+      "lineTypeRaw": "string or null",
       "commissionRatePercent": number or null,
       "orderValueIncVat": number or null,
       "orderValueExcVat": number or null,
@@ -114,7 +118,10 @@ Be precise with financial figures. CRITICAL: Capture the exact reason text for D
           ]
         }],
       }),
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
 
     if (!claudeResponse.ok) {
       const errorText = await claudeResponse.text()
@@ -169,6 +176,15 @@ Be precise with financial figures. CRITICAL: Capture the exact reason text for D
 
   } catch (error) {
     console.error('Commission OCR error:', error)
+    
+    // Handle timeout specifically
+    if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+      return new Response(
+        JSON.stringify({ error: 'OCR processing timed out. Please try again with a clearer image.' }),
+        { status: 408, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
