@@ -30,6 +30,7 @@ import { ExpenseReceiptView } from './features/expenses/components/ExpenseReceip
 import { DORPrediction } from './features/dor/components/DORPrediction'
 import { OnboardingFlow } from './features/onboarding/components/OnboardingFlow'
 import { PilotMetricsDashboard } from './features/pilot/components/PilotMetricsDashboard'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -42,7 +43,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />
   }
   
-  return <>{children}</>
+  return (
+    <ErrorBoundary>
+      {children}
+    </ErrorBoundary>
+  )
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -56,7 +61,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/" replace />
   }
   
-  return <>{children}</>
+  return (
+    <ErrorBoundary>
+      {children}
+    </ErrorBoundary>
+  )
 }
 
 export default function App() {
