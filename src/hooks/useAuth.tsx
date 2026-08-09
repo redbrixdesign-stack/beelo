@@ -34,6 +34,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const advisorData = await db.advisors.where('authUserId').equals(currentUser.id).first()
           if (advisorData) {
             setAdvisor(advisorData)
+            // Sync to Supabase if supabaseId missing (existing user before fix)
+            if (!advisorData.supabaseId) {
+              try {
+                await syncAdvisorToSupabase(advisorData)
+                const syncedAdvisor = await db.advisors.get(advisorData.id!)
+                if (syncedAdvisor) setAdvisor(syncedAdvisor)
+              } catch (err) {
+                console.warn('Failed to sync advisor to Supabase:', err)
+              }
+            }
           } else {
             // Create advisor profile for new user
             const sourceEnv = (import.meta.env.VITE_SOURCE_ENV as 'demo' | 'qa' | 'live') || 'live'
