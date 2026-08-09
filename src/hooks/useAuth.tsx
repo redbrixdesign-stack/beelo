@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { getCurrentUser, signOut as signOutApi, syncAdvisorToSupabase } from '../lib/auth'
 import { db, type AdvisorDexie } from '../lib/dexie'
 import { getDefaultSourceEnv } from '../lib/dexie'
+import { pullFromSupabase } from '../lib/syncEngine'
 
 type SupabaseUser = Awaited<ReturnType<typeof supabase.auth.getUser>> extends { data: { user: infer U } } ? U : null
 
@@ -43,6 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               } catch (err) {
                 console.warn('Failed to sync advisor to Supabase:', err)
               }
+            }
+            // Initial pull from Supabase on app open
+            try {
+              await pullFromSupabase()
+            } catch (err) {
+              console.warn('Initial pull from Supabase failed:', err)
             }
           } else {
             // Create advisor profile for new user
