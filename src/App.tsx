@@ -20,7 +20,6 @@ import { Leads } from './features/leads/components/LeadList'
 import { LeadDetail } from './features/leads/components/LeadDetail'
 import { LeadForm } from './features/leads/components/LeadForm'
 import { SettingsScreen } from './features/settings/components/SettingsScreen'
-import { SyncStatus } from './pages/SyncStatus'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()

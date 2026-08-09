@@ -153,14 +153,3 @@ export function Leads() {
     </div>
   )
 }
-
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus, Phone, Mail, AlertTriangle, CheckCircle, Clock, ChevronRight, Filter } from 'lucide-react'
-import { Card } from '@components/ui/Card'
-import { Badge } from '@components/ui/Badge'
-import { Button } from '@components/ui/Button'
-import { Input } from '@components/ui/Input'
-import { Select } from '@components/ui/Select'
-import { useLeads } from '../hooks/useLeads'
-import { LEAD_SOURCES, CALL_OUTCOMES, LEAD_STATUSES, LeadStatus, LeadSource } from '@lib/constants'
