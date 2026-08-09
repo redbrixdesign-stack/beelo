@@ -82,7 +82,7 @@ async function getAdvisorForSync(): Promise<AdvisorDexie | null> {
   return advisors[0] ?? null
 }
 
-async function processSyncItem(item: SyncQueueItem): Promise<boolean> {
+async function processSyncItem(item: SyncQueueItem): Promise<{ success: boolean; error?: string }> {
   const table = supabase.from(item.entityType)
   const advisor = await getAdvisorForSync()
   const isCreate = item.operation === 'create'
@@ -134,7 +134,7 @@ async function processSyncItem(item: SyncQueueItem): Promise<boolean> {
     }
     
     await db.syncQueue.update(item.id!, { status: 'synced' })
-    return true
+    return { success: true }
   } catch (err) {
     const newRetryCount = item.retryCount + 1
     const update: Partial<SyncQueueItem> = {
@@ -148,13 +148,13 @@ async function processSyncItem(item: SyncQueueItem): Promise<boolean> {
     }
     
     await db.syncQueue.update(item.id!, update)
-    return false
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }
 
-export async function processSyncQueue(): Promise<{ processed: number; failed: number }> {
+export async function processSyncQueue(): Promise<{ processed: number; failed: number; errors: string[] }> {
   if (syncInProgress || !isOnline()) {
-    return { processed: 0, failed: 0 }
+    return { processed: 0, failed: 0, errors: [] }
   }
   
   syncInProgress = true
@@ -168,19 +168,21 @@ export async function processSyncQueue(): Promise<{ processed: number; failed: n
     
     let processed = 0
     let failed = 0
+    const errors: string[] = []
     
     for (const item of pendingItems) {
       if (!isOnline()) break
       
-      const success = await processSyncItem(item)
-      if (success) {
+      const result = await processSyncItem(item)
+      if (result.success) {
         processed++
       } else {
         failed++
+        if (result.error) errors.push(`${item.entityType}:${item.entityId} - ${result.error}`)
       }
     }
     
-    return { processed, failed }
+    return { processed, failed, errors }
   } finally {
     syncInProgress = false
   }

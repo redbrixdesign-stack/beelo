@@ -80,9 +80,11 @@ export function DocumentDetail() {
     try {
       await deleteDocument(document.id!)
       console.log('[DocumentDetail] Document deleted successfully:', document.id)
+      showToast('Document deleted', 'success')
       navigate('/documents')
     } catch (err) {
       console.error('[DocumentDetail] Delete failed:', err)
+      showToast(err instanceof Error ? err.message : 'Failed to delete document', 'error')
     } finally {
       setDeleting(false)
     }

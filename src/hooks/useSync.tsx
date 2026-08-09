@@ -11,6 +11,7 @@ import {
   getSyncStatus
 } from '../lib/sync'
 import { pullFromSupabase, pushToSupabase, fullSync } from '../lib/syncEngine'
+import { useToast } from '../components/ui/Toast'
 
 type SyncStatus = 'synced' | 'pending' | 'offline'
 
@@ -39,6 +40,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [lastPull, setLastPull] = useState<Date | null>(null)
   const [lastPush, setLastPush] = useState<Date | null>(null)
   const isMountedRef = useRef(true)
+  const { showToast } = useToast()
 
   const refreshStatus = useCallback(async () => {
     if (!isMountedRef.current) return
@@ -87,8 +89,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         console.warn(`Sync conflicts resolved (last-write-wins): ${totalConflicts}`)
       }
       console.log(`Pulled ${totalPulled} records from server`)
+      showToast(`Pulled ${totalPulled} records from server`, 'success')
     } catch (err) {
       console.error('Pull from server failed:', err)
+      showToast(err instanceof Error ? err.message : 'Pull from server failed', 'error')
     } finally {
       if (isMountedRef.current) {
         setIsProcessing(false)
@@ -106,9 +110,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       console.log(`Pushed ${result.pushed} records, ${result.failed} failed`)
       if (result.errors.length > 0) {
         console.warn('Push errors:', result.errors)
+        showToast(`${result.errors.length} push errors occurred`, 'warning')
+      }
+      if (result.failed === 0) {
+        showToast(`Pushed ${result.pushed} records to server`, 'success')
       }
     } catch (err) {
       console.error('Push to server failed:', err)
+      showToast(err instanceof Error ? err.message : 'Push to server failed', 'error')
     } finally {
       if (isMountedRef.current) {
         setIsProcessing(false)
@@ -130,8 +139,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         console.warn(`Sync conflicts resolved (last-write-wins): ${totalConflicts}`)
       }
       console.log(`Full sync: pulled ${totalPulled}, pushed ${push.pushed}`)
+      if (push.errors.length > 0) {
+        console.warn('Push errors:', push.errors)
+        showToast(`${push.errors.length} push errors occurred`, 'warning')
+      }
+      if (push.failed === 0) {
+        showToast(`Full sync: pulled ${totalPulled}, pushed ${push.pushed}`, 'success')
+      }
     } catch (err) {
       console.error('Full sync failed:', err)
+      showToast(err instanceof Error ? err.message : 'Full sync failed', 'error')
     } finally {
       if (isMountedRef.current) {
         setIsProcessing(false)
@@ -166,7 +183,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const process = async () => {
         setIsProcessing(true)
         try {
-          await processSyncQueue()
+          const result = await processSyncQueue()
+          if (result.errors.length > 0) {
+            console.warn('Sync errors:', result.errors)
+            showToast(`${result.errors.length} sync errors occurred`, 'warning')
+          }
+          if (result.failed === 0) {
+            showToast(`Synced ${result.processed} items`, 'success')
+          }
+        } catch (err) {
+          console.error('Sync failed:', err)
+          showToast(err instanceof Error ? err.message : 'Sync failed', 'error')
         } finally {
           if (isMountedRef.current) {
             setIsProcessing(false)

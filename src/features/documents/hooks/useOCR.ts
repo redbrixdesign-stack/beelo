@@ -5,6 +5,7 @@ import { supabase } from '@lib/supabase'
 import { useSync } from '@hooks/useSync'
 import { useDexie } from '@hooks/useDexie'
 import { useAuth } from '@hooks/useAuth'
+import { useToast } from '@components/ui/Toast'
 import type { DocumentDexie } from '@lib/dexie'
 
 interface OCRResult {
@@ -127,6 +128,7 @@ export function useOCR() {
   const { db, isReady } = useDexie()
   const { advisor } = useAuth()
   const { status: syncStatus } = useSync()
+  const { showToast } = useToast()
   const [processing, setProcessing] = useState(false)
   const [lastProcessed, setLastProcessed] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -452,6 +454,7 @@ export function useOCR() {
               status: 'uploaded', // back to uploaded, no more retries
               updatedAt: new Date(),
             })
+            showToast(`OCR server error for document ${doc.id}`, 'error')
             console.error(`OCR circuit breaker: document ${doc.id} set to uploaded due to server error`)
           } else if (nextRetry >= MAX_OCR_RETRIES) {
             // Max retries exceeded - mark as uploaded (not error) and stop retrying
@@ -461,6 +464,7 @@ export function useOCR() {
               status: 'uploaded', // not 'error' or 'ocr_failed' - back to uploaded for manual retry
               updatedAt: new Date(),
             })
+            showToast(`OCR failed for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`, 'error')
             console.error(`OCR failed permanently for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`)
           } else {
             // Schedule retry with exponential backoff (2s, 4s, 8s)
@@ -470,6 +474,7 @@ export function useOCR() {
               status: 'uploaded', // back to uploaded for retry
               updatedAt: new Date(),
             })
+            showToast(`OCR failed, retrying (${nextRetry}/${MAX_OCR_RETRIES})`, 'warning')
             const delay = OCR_RETRY_BACKOFF_MS * Math.pow(2, nextRetry - 1) // 2s, 4s, 8s
             setTimeout(() => {
               if (!processing) {
@@ -483,6 +488,7 @@ export function useOCR() {
       setLastProcessed(new Date())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'OCR processing failed')
+      showToast(err instanceof Error ? err.message : 'OCR processing failed', 'error')
     } finally {
       setProcessing(false)
     }

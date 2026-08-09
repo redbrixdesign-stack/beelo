@@ -110,35 +110,51 @@ export function VoiceCaptureScreen() {
       setTimeout(() => navigate(-1), 1500)
     } catch (err) {
       console.error('Failed to save voice note:', err)
-      setError('Failed to save recording')
+      showToast(err instanceof Error ? err.message : 'Failed to save recording', 'error')
       setRecordingState('idle')
     }
   }, [triggerMethod, leadId, sourceEnv, isReady, db, enqueueSync, navigate])
 
   const handleStartRecording = useCallback(async () => {
     if (!isReady) {
-      setError('Database not ready')
+      showToast('Database not ready', 'error')
       return
     }
     
     setError(null)
     setRecordingState('recording')
-    await start()
+    try {
+      await start()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to start recording', 'error')
+    }
   }, [isReady])
 
   const handlePauseResume = useCallback(() => {
     if (isPaused) {
-      resume()
-      setRecordingState('recording')
+      try {
+        resume()
+        setRecordingState('recording')
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'Failed to resume', 'error')
+      }
     } else if (isRecording) {
-      pause()
-      setRecordingState('paused')
+      try {
+        pause()
+        setRecordingState('paused')
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'Failed to pause', 'error')
+      }
     }
   }, [isRecording, isPaused, pause, resume])
 
   const handleCancel = useCallback(() => {
     if (isRecording || isPaused) {
-      stop()
+      try {
+        stop()
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'Failed to stop recording', 'error')
+      }
     }
     setRecordingState('idle')
     setAudioBlob(null)
