@@ -12,7 +12,7 @@ import { Profile } from './pages/Profile'
 import { Login } from './pages/Login'
 import { SyncStatus } from './pages/SyncStatus'
 import { Documents } from './pages/Documents'
-import { DocumentCapture } from './features/documents/components/DocumentCapture'
+import { DocumentCapturePage } from './features/documents/components/DocumentCapturePage'
 import { DocumentDetail } from './features/documents/components/DocumentDetail'
 import { VoiceCaptureScreen } from './features/voice/components/VoiceCaptureScreen'
 import { BatchReviewScreen } from './features/voice/components/BatchReviewScreen'
@@ -206,9 +206,7 @@ export default function App() {
       
       <Route path="/documents/capture" element={
         <ProtectedRoute>
-          <Layout title="Capture Document" showBack onBack={() => window.history.back()}>
-            <DocumentCapture />
-          </Layout>
+          <DocumentCapturePage />
         </ProtectedRoute>
       } />
       
