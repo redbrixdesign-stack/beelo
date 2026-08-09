@@ -10,10 +10,10 @@ import { Badge } from '@components/ui/Badge'
 import { Button } from '@components/ui/Button'
 import { Users, CheckCircle } from 'lucide-react'
 import { enqueueSync } from '@lib/sync'
-import type { CustomerDexie } from '@lib/dexie'
+import type { CustomerDexie, VoiceNoteDexie } from '@lib/dexie'
 
 interface NameHintMatcherProps {
-  voiceNote: any // VoiceNote with extracted_name_spoken
+  voiceNote: VoiceNoteDexie
   onMatch: (customerId: number, matchMethod: 'name_hint') => Promise<void>
   onSkip: () => void
 }
@@ -22,10 +22,10 @@ export function NameHintMatcher({ voiceNote, onMatch, onSkip }: NameHintMatcherP
   const { db, isReady } = useDexie()
   const { advisor } = useAuth()
   const { showToast } = useToast()
-  const [customers, setCustomers] = useState<any[]>([])
+  const [customers, setCustomers] = useState<CustomerDexie[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [matchedCustomer, setMatchedCustomer] = useState<any | null>(null)
+  const [matchedCustomer, setMatchedCustomer] = useState<CustomerDexie | null>(null)
 
   const extractedName = voiceNote.extracted_name_spoken
 
@@ -77,7 +77,7 @@ export function NameHintMatcher({ voiceNote, onMatch, onSkip }: NameHintMatcherP
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 10)
 
-  const handleMatch = async (customer: any) => {
+  const handleMatch = async (customer: CustomerDexie) => {
     await onMatch(customer.id, 'name_hint')
     showToast(`Matched to ${customer.displayName}`, 'success')
   }
@@ -155,7 +155,7 @@ export function NameHintMatcher({ voiceNote, onMatch, onSkip }: NameHintMatcherP
   )
 }
 
-function NameMatchCard({ customer, onSelect }: { customer: any; onSelect: () => void }) {
+function NameMatchCard({ customer, onSelect }: { customer: CustomerDexie & { matchScore: number }; onSelect: () => void }) {
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'var(--color-success)'
     if (score >= 50) return 'var(--color-warning)'

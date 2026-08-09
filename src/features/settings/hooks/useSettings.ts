@@ -7,7 +7,9 @@ import { enqueueSync } from '@lib/sync'
 import { getDefaultSourceEnv } from '@lib/dexie'
 import type { SettingDexie } from '@lib/dexie'
 
-const DEFAULT_SETTINGS = {
+type SettingValue = string | number | boolean | null | Record<string, unknown> | unknown[]
+
+const DEFAULT_SETTINGS: Record<string, SettingValue> = {
   hmrcMileageRateTier1: 0.55,
   hmrcMileageRateTier2: 0.25,
   hmrcMileageThresholdMiles: 10000,
@@ -22,7 +24,7 @@ const DEFAULT_SETTINGS = {
 
 export function useSettings() {
   const { advisor } = useAuth()
-  const [settings, setSettings] = useState<Record<string, any>>(DEFAULT_SETTINGS)
+  const [settings, setSettings] = useState<Record<string, SettingValue>>(DEFAULT_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -35,7 +37,7 @@ export function useSettings() {
       const records = await db.settings.where('advisorId').equals(advisorId).toArray()
       const merged = { ...DEFAULT_SETTINGS }
       for (const record of records) {
-        let value: any = record.value
+        let value: SettingValue = record.value
         try {
           value = JSON.parse(record.value)
         } catch {
@@ -51,7 +53,7 @@ export function useSettings() {
     }
   }, [advisorId])
 
-  const updateSetting = useCallback(async (key: string, value: any) => {
+  const updateSetting = useCallback(async (key: string, value: SettingValue) => {
     if (!advisorId) throw new Error('No advisor')
     setSaving(true)
     try {

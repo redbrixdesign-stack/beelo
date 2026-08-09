@@ -10,6 +10,19 @@ import { Button } from '@components/ui/Button'
 import { FileText, Clock, PoundSterling, Receipt, AlertTriangle, Trash2, Edit } from 'lucide-react'
 import type { DocumentDexie } from '@lib/dexie'
 
+interface ParsedExpense {
+  merchant?: string
+  date?: string
+  amount?: number
+  vatAmount?: number
+  category?: string
+  items?: Array<{
+    description: string
+    amount: number
+    vatAmount?: number
+  }>
+}
+
 export function ExpenseReceiptView() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -38,23 +51,6 @@ export function ExpenseReceiptView() {
     }
   }
 
-  const getCategoryBadge = (category: string) => {
-    const colors: Record<string, string> = {
-      fuel: 'var(--color-primary)',
-      parking: 'var(--color-warning)',
-      materials: 'var(--color-success)',
-      tools: 'var(--color-info)',
-      subsistence: 'var(--color-primary)',
-      accommodation: 'var(--color-warning)',
-      training: 'var(--color-success)',
-      insurance: 'var(--color-info)',
-      phone: 'var(--color-primary)',
-      software: 'var(--color-warning)',
-      other: 'var(--color-text-muted)',
-    }
-    return <Badge variant="default" size="sm" style={{ background: `${colors[category] || 'var(--color-text-muted)'}20`, color: colors[category] || 'var(--color-text-muted)' }}>{category}</Badge>
-  }
-
   const formatAmount = (amount: number | null) => {
     if (amount === null || amount === undefined) return '—'
     return `£${amount.toFixed(2)}`
@@ -66,15 +62,23 @@ export function ExpenseReceiptView() {
   }
 
   if (loading) {
-    return <Layout title="Expense Receipt"><div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Loading...</div></Layout>
+    return (
+      <Layout title="Expense Receipt">
+        <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Loading...</div>
+      </Layout>
+    )
   }
 
   if (!document) {
-    return <Layout title="Expense Receipt"><div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Document not found</div></Layout>
+    return (
+      <Layout title="Expense Receipt">
+        <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Document not found</div>
+      </Layout>
+    )
   }
 
-  const parsed = document.parsedJson as any
-  const items = parsed?.items || []
+  const parsed = document.parsedJson as Record<string, unknown> | undefined
+  const items = (parsed?.items as Array<{ description: string; amount: number; vatAmount?: number }>) || []
 
   return (
     <Layout title="Expense Receipt" onBack={() => navigate('/documents')}>
@@ -87,7 +91,7 @@ export function ExpenseReceiptView() {
                 <Badge variant="info" size="sm">Expense</Badge>
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                Merchant: <strong>{parsed?.merchant || 'Unknown'}</strong>
+                Merchant: <strong>{(parsed?.merchant as string) || 'Unknown'}</strong>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
@@ -118,30 +122,30 @@ export function ExpenseReceiptView() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
             <div style={{ padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-xs)' }}>Merchant</div>
-              <div style={{ fontSize: '1rem', fontWeight: 600 }}>{parsed?.merchant || 'Unknown'}</div>
+              <div style={{ fontSize: '1rem', fontWeight: 600 }}>{(parsed?.merchant as string) || 'Unknown'}</div>
             </div>
             <div style={{ padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-xs)' }}>Date</div>
-              <div style={{ fontSize: '1rem', fontWeight: 600 }}>{formatDate(parsed?.date)}</div>
+              <div style={{ fontSize: '1rem', fontWeight: 600 }}>{formatDate((parsed?.date as string) || null)}</div>
             </div>
             <div style={{ padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-xs)' }}>Category</div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--spacing-xs)' }}>
-                <Badge variant="default" size="sm" style={{ background: `var(--color-primary)20`, color: 'var(--color-primary)' }}>
-                  {parsed?.category || 'other'}
+                <Badge variant="default" size="sm" style={{ background: 'var(--color-primary)20', color: 'var(--color-primary)' }}>
+                  {(parsed?.category as string) || 'other'}
                 </Badge>
               </div>
             </div>
             <div style={{ padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-xs)' }}>Total Amount</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-error)' }}>
-                {formatAmount(parsed?.amount)}
+                {formatAmount((parsed?.amount as number) || null)}
               </div>
             </div>
             <div style={{ padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-xs)' }}>VAT Amount</div>
               <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                {formatAmount(parsed?.vatAmount)}
+                {formatAmount((parsed?.vatAmount as number) || null)}
               </div>
             </div>
           </div>
@@ -150,7 +154,7 @@ export function ExpenseReceiptView() {
             <Card padding="lg">
               <h3 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1rem', fontWeight: 600 }}>Line Items ({items.length})</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                {items.map((item: any, index: number) => (
+                {items.map((item: { description: string; amount: number; vatAmount?: number }, index: number) => (
                   <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 'var(--spacing-sm)', padding: 'var(--spacing-sm)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', alignItems: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                       <div style={{ fontWeight: 500, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -185,18 +189,4 @@ export function ExpenseReceiptView() {
       </Layout>
     )
   )
-}
-
-const colors: Record<string, string> = {
-  fuel: 'var(--color-primary)',
-  parking: 'var(--color-warning)',
-  materials: 'var(--color-success)',
-  tools: 'var(--color-info)',
-  subsistence: 'var(--color-primary)',
-  accommodation: 'var(--color-warning)',
-  training: 'var(--color-success)',
-  insurance: 'var(--color-info)',
-  phone: 'var(--color-primary)',
-  software: 'var(--color-warning)',
-  other: 'var(--color-text-muted)',
 }

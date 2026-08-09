@@ -120,7 +120,7 @@ export function DeliveryDropNoteView() {
             Items ({note.items?.length || 0})
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-            {note.items?.map((item: any, index: number) => (
+            {note.items?.map((item: { lineNumber?: number; description: string; quantity: number; status: string }, index: number) => (
               <div key={item.lineNumber || index} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 'var(--spacing-sm)', padding: 'var(--spacing-sm)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, color: 'var(--color-primary)', minWidth: '32px' }}>{item.lineNumber || index + 1}</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>

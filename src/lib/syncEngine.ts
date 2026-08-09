@@ -101,7 +101,7 @@ const ENTITY_TABLE_MAP: Record<string, string> = {
 
 const ENTITY_DEXIE_MAP: Record<string, Table> = {}
 
-async function getAdvisorForSync(): Promise<{ advisor: any; supabase: any } | null> {
+async function getAdvisorForSync(): Promise<{ advisor: AdvisorDexie; supabase: SupabaseClient } | null> {
   const advisors = await db.advisors.toArray()
   const advisor = advisors[0] ?? null
   if (!advisor?.supabaseId) {
@@ -110,7 +110,7 @@ async function getAdvisorForSync(): Promise<{ advisor: any; supabase: any } | nu
   return { advisor, supabase }
 }
 
-async function getRemoteData(supabase: any, entityType: string, advisorId: string, lastSynced: Date | null): Promise<any[]> {
+async function getRemoteData(supabase: SupabaseClient, entityType: string, advisorId: string, lastSynced: Date | null): Promise<Record<string, unknown>[]> {
   const tableName = ENTITY_TABLE_MAP[entityType]
   if (!tableName) {
     throw new Error(`Unknown entity type: ${entityType}`)
@@ -142,7 +142,7 @@ async function pushLocalChanges(entityType: string): Promise<{ pushed: number; f
     return { pushed: 0, failed: 0, errors: [`Unknown entity type: ${entityType}`] }
   }
 
-  const dexieTable = (db as any)[entityType]
+  const dexieTable = (db as Record<string, Table>)[entityType]
   if (!dexieTable) {
     return { pushed: 0, failed: 0, errors: [`Dexie table not found: ${entityType}`] }
   }
@@ -162,7 +162,7 @@ async function pushLocalChanges(entityType: string): Promise<{ pushed: number; f
     try {
       await db.syncQueue.update(item.id!, { status: 'syncing' })
 
-      const transformedPayload = transformPayloadForSupabase(item.payload, { supabaseId: advisor.supabaseId } as any, item.operation === 'create')
+      const transformedPayload = transformPayloadForSupabase(item.payload, { supabaseId: advisor.supabaseId }, item.operation === 'create')
 
       const table = supabase.from(ENTITY_TABLE_MAP[entityType])
       let error: { message: string } | null = null
@@ -252,7 +252,7 @@ export async function pullFromSupabase(): Promise<PullResult[]> {
 
   for (const entityType of entityTypes) {
     try {
-      const dexieTable = (db as any)[entityType]
+      const dexieTable = (db as Record<string, Table>)[entityType]
       if (!dexieTable) continue
 
       const lastRecord = await dexieTable
@@ -266,13 +266,13 @@ export async function pullFromSupabase(): Promise<PullResult[]> {
       const remoteData = await getRemoteData(supabase, entityType, result.advisor.supabaseId, lastSynced)
 
       let pulled = 0
-      const conflicts: any[] = []
+      const conflicts: SyncConflict[] = []
 
       for (const remoteRecord of remoteData) {
-        const localRecord = await (db as any)[entityType].get(remoteRecord.id)
+        const localRecord = await (db as Record<string, Table>)[entityType].get(remoteRecord.id)
         
         if (!localRecord) {
-          await (db as any)[entityType].put({ ...remoteRecord, advisorId: result.advisor.id })
+          await (db as Record<string, Table>)[entityType].put({ ...remoteRecord, advisorId: result.advisor.id })
           pulled++
         } else if (new Date(remoteRecord.updatedAt) > new Date(localRecord.updatedAt)) {
           // Last-write-wins conflict resolution

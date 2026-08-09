@@ -124,7 +124,7 @@ export function ExpenseReceiptView() {
           <h3 style={{ margin: '0 0 var(--spacing-lg)', fontSize: '1rem', fontWeight: 600 }}>Line Items</h3>
           {expense.items && expense.items.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-              {expense.items.map((item: any, index: number) => (
+              {expense.items.map((item: { description: string; amount?: number; vatAmount?: number }, index: number) => (
                 <div key={index} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 'var(--spacing-sm)', padding: 'var(--spacing-sm)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', alignItems: 'center' }}>
                   <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{index + 1}</span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>

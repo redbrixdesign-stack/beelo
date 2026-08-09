@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@components/ui/Card'
 import { Badge } from '@components/ui/Badge'
+import { Select } from '@components/ui/Select'
+import { Button } from '@components/ui/Button'
 import { TrendingUp, TrendingDown, Clock, Users, Mic, FileText, DollarSign, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react'
 import { usePilotMetrics } from '../hooks/usePilotMetrics'
 
@@ -23,9 +25,9 @@ export function PilotMetricsDashboard() {
   const metricConfigs = [
     { key: 'voice_notes_created', label: 'Voice Notes', icon: Mic, color: 'var(--color-primary)' },
     { key: 'documents_uploaded', label: 'Documents', icon: FileText, color: 'var(--color-success)' },
-    { key: 'leads_created', label: 'Leads', icon: 'Users', color: 'var(--color-warning)' },
-    { key: 'calls_logged', label: 'Calls', icon: 'Mic', color: 'var(--color-primary)' },
-    { key: 'expenses_recorded', label: 'Expenses', icon: 'DollarSign', color: 'var(--color-error)' },
+    { key: 'leads_created', label: 'Leads', icon: Users, color: 'var(--color-warning)' },
+    { key: 'calls_logged', label: 'Calls', icon: Mic, color: 'var(--color-primary)' },
+    { key: 'expenses_recorded', label: 'Expenses', icon: DollarSign, color: 'var(--color-error)' },
     { key: 'incidents_detected', label: 'Incidents', icon: AlertTriangle, color: 'var(--color-error)' },
     { key: 'schedule_risks_avoided', label: 'Schedule Risks', icon: AlertCircle, color: 'var(--color-warning)' },
     { key: 'offline_sessions', label: 'Offline Sessions', icon: Clock, color: 'var(--color-text-muted)' },
@@ -45,7 +47,7 @@ export function PilotMetricsDashboard() {
         <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Pilot Metrics</h2>
         <Select
           value={timeRange}
-          onChange={e => setTimeRange(e.target.value as any)}
+          onChange={e => setTimeRange(e.target.value as '7d' | '30d' | '90d')}
           options={[
             { value: '7d', label: '7 days' },
             { value: '30d', label: '30 days' },
@@ -63,7 +65,7 @@ export function PilotMetricsDashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xs)' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: `${config.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: config.color }}>
                   {typeof config.icon === 'string' ? (
-                    <span style={{ fontSize: '1rem' }}>{config.icon === 'Users' ? '👥' : config.icon === 'Mic' ? '🎤' : config.icon === 'FileText' ? '📄' : config.icon === 'DollarSign' ? '💰' : config.icon === 'AlertTriangle' ? '⚠️' : config.icon === 'AlertCircle' ? '🔔' : config.icon === 'CheckCircle' ? '✅' : config.icon === 'Clock' ? '⏰' : '📊'}}</span>
+                    <span style={{ fontSize: '1rem' }}>{config.icon === 'Users' ? '👥' : config.icon === 'Mic' ? '🎤' : config.icon === 'FileText' ? '📄' : config.icon === 'DollarSign' ? '💰' : config.icon === 'AlertTriangle' ? '⚠️' : config.icon === 'AlertCircle' ? '🔔' : config.icon === 'CheckCircle' ? '✅' : config.icon === 'Clock' ? '⏰' : '📊'}</span>
                   ) : (
                     <config.icon size={16} />
                   )}
@@ -101,5 +103,3 @@ export function PilotMetricsDashboard() {
     </Card>
   )
 }
-
-import { Select } from '@components/ui/Select'

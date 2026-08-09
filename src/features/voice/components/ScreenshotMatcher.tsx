@@ -12,7 +12,7 @@ import { Image, CheckCircle } from 'lucide-react'
 import type { VoiceNoteDexie, DocumentDexie, VisitDexie } from '@lib/dexie'
 
 interface ScreenshotMatcherProps {
-  voiceNote: any // VoiceNote with transcript and extracted fields
+  voiceNote: VoiceNoteDexie
   onMatch: (visitId: number, matchMethod: 'screenshot_proximity') => Promise<void>
   onSkip: () => void
   voiceNoteId: number
@@ -113,7 +113,7 @@ export function ScreenshotMatcher({ voiceNote, onMatch, onSkip, voiceNoteId }: S
 }
 
 function ScreenshotCard({ screenshot, selected, onSelect }: { 
-  screenshot: any; 
+  screenshot: DocumentDexie; 
   selected: boolean; 
   onSelect: () => void 
 }) {

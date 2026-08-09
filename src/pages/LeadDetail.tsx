@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { useDexie } from '@hooks/useDexie'
@@ -21,9 +21,9 @@ export function LeadDetail() {
   const { advisor } = useAuth()
   const { db, isReady } = useDexie()
   const { showToast } = useToast()
-  const [lead, setLead] = useState<any>(null)
-  const [callAttempts, setCallAttempts] = useState<any[]>([])
-  const [voiceNotes, setVoiceNotes] = useState<any[]>([])
+  const [lead, setLead] = useState<LeadDexie | null>(null)
+  const [callAttempts, setCallAttempts] = useState<CallAttemptDexie[]>([])
+  const [voiceNotes, setVoiceNotes] = useState<VoiceNoteDexie[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -97,7 +97,7 @@ export function LeadDetail() {
         leadId: lead.id!,
         initiatedAt: new Date(),
         outcome: callForm.outcome,
-        sourceEnv: (import.meta.env.VITE_SOURCE_ENV as any) || 'live',
+        sourceEnv: (import.meta.env.VITE_SOURCE_ENV as 'demo' | 'qa' | 'live') || 'live',
         createdAt: new Date(),
       } as any)
 
@@ -105,7 +105,7 @@ export function LeadDetail() {
         lead_id: lead.id,
         initiated_at: new Date().toISOString(),
         outcome: callForm.outcome,
-        source_env: (import.meta.env.VITE_SOURCE_ENV as any) || 'live',
+        source_env: (import.meta.env.VITE_SOURCE_ENV as 'demo' | 'qa' | 'live') || 'live',
       })
 
       await loadData()
@@ -216,87 +216,70 @@ export function LeadDetail() {
               <Select
                 label="Source"
                 value={editForm.source}
-                onChange={e => setEditForm({ ...editForm, source: e.target.value as LeadSource })}
+                onChange={e => setEditForm({ ...editForm, source: e.target.value as LeadDexie['source'] })}
                 options={['', ...LEAD_SOURCES].map(s => ({ value: s, label: s || 'Select source' }))}
               />
             </div>
           </Card>
+        )}
 
-          {showCallForm && (
-            <Card padding="lg" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Log Call</h3>
-              <Select
-                label="Outcome"
-                value={callForm.outcome}
-                onChange={e => setCallForm({ ...callForm, outcome: e.target.value as typeof callForm.outcome })}
-                options={CALL_OUTCOMES.map(o => ({ value: o, label: o.replace('_', ' ') }))}
-              />
-              <Input
-                label="Notes (optional)"
-                value={callForm.notes}
-                onChange={e => setCallForm({ ...callForm, notes: e.target.value })}
-                placeholder="What happened on the call?"
-                multiline
-                rows={3}
-              />
-              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)' }}>
-                <Button onClick={handleAddCall} leftIcon={<CheckCircle size={16} />} fullWidth>
-                  Save Call
-                </Button>
-                <Button variant="ghost" onClick={() => setShowCallForm(false)} fullWidth>
-                  Cancel
-                </Button>
-              </div>
-            </Card>
-          )}
+        {showCallForm && (
+          <Card padding="lg" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Log Call</h3>
+            <Select
+              label="Outcome"
+              value={callForm.outcome}
+              onChange={e => setCallForm({ ...callForm, outcome: e.target.value as typeof callForm.outcome })}
+              options={CALL_OUTCOMES.map(o => ({ value: o, label: o.replace('_', ' ') }))}
+            />
+            <Input
+              label="Notes (optional)"
+              value={callForm.notes}
+              onChange={e => setCallForm({ ...callForm, notes: e.target.value })}
+              placeholder="What happened on the call?"
+              multiline
+              rows={3}
+            />
+            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)' }}>
+              <Button onClick={handleAddCall} leftIcon={<CheckCircle size={16} />} fullWidth>
+                Save Call
+              </Button>
+              <Button variant="ghost" onClick={() => setShowCallForm(false)} fullWidth>
+                Cancel
+              </Button>
+            </div>
+          </Card>
+        )}
 
-          {callAttempts.length > 0 && (
-            <Card padding="lg">
-              <h3 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1rem', fontWeight: 600 }}>Call History</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                {callAttempts.map(call => (
-                  <div key={call.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                      <Badge variant="default" size="sm">{call.outcome.replace('_', ' ')}</Badge>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                        {new Date(call.initiatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
+        {callAttempts.length > 0 && (
+          <Card padding="lg">
+            <h3 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1rem', fontWeight: 600 }}>Call History</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+              {callAttempts.map(call => (
+                <div key={call.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                    <Badge variant="default" size="sm">{call.outcome.replace('_', ' ')}</Badge>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                      {new Date(call.initiatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </Card>
-          )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
-          {voiceNotes.length > 0 && (
-            <Card padding="lg">
-              <h3 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1rem', fontWeight: 600 }}>Voice Notes</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                {voiceNotes.map(note => (
-                  <VoiceNoteCard key={note.id} note={note} compact />
-                ))}
-              </div>
-            </Card>
-          )}
-        </div>
-      </Layout>
-    )
-  }
+        {voiceNotes.length > 0 && (
+          <Card padding="lg">
+            <h3 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1rem', fontWeight: 600 }}>Voice Notes</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+              {voiceNotes.map(note => (
+                <VoiceNoteCard key={note.id} note={note} compact />
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+    </Layout>
+  )
 }
-
-import { useState, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useAuth } from '@hooks/useAuth'
-import { useDexie } from '@hooks/useDexie'
-import { useToast } from '@components/ui/Toast'
-import { Layout } from '@components/layout/Layout'
-import { Card } from '@components/ui/Card'
-import { Badge } from '@components/ui/Badge'
-import { Button } from '@components/ui/Button'
-import { Input } from '@components/ui/Input'
-import { Select } from '@components/ui/Select'
-import { Calendar, Phone, Hash, Edit, Trash2, ChevronLeft, Plus, Clock, CheckCircle, AlertTriangle, Mic, Users, ArrowRight, MapPin } from 'lucide-react'
-import { VoiceNoteCard } from '../voice/components/VoiceNoteCard'
-import { LEAD_STATUSES, LEAD_SOURCES, CALL_OUTCOMES } from '@lib/constants'
-import { enqueueSync } from '@lib/sync'
-import type { LeadDexie, CallAttemptDexie, VoiceNoteDexie } from '@lib/dexie'

@@ -65,7 +65,7 @@ export function LeadsPage() {
     return <Badge variant={variants[latest.outcome] || 'default'} size="sm">{latest.outcome.replace('_', ' ')}</Badge>
   }
 
-  const handleLeadClick = (lead: any) => {
+  const handleLeadClick = (lead: LeadDexie) => {
     navigate(`/leads/${lead.id}`)
   }
 

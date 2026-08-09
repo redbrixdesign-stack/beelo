@@ -138,7 +138,7 @@ export function ExpenseList({ onNew, dateRange }: ExpenseListProps) {
 
               {exp.items && exp.items.length > 0 && (
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: 'var(--spacing-md)' }}>
-                  {exp.items.map((item: any, i: number) => (
+                  {exp.items.map((item: { description: string; amount?: number; vatAmount?: number }, i: number) => (
                     <div key={i}>
                       {item.description} — £{item.amount?.toFixed(2)}
                     </div>

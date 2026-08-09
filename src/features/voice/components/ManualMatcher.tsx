@@ -72,7 +72,7 @@ function ManualMatchCard({ icon, title, subtitle, badges = [], onSelect }: Manua
 }
 
 interface ManualMatcherProps {
-  voiceNote: any
+  voiceNote: VoiceNoteDexie
   onMatch: (visitId: number, matchMethod: 'screenshot_proximity' | 'manual_review' | 'name_hint') => Promise<void>
   onSkip: () => void
 }
@@ -81,8 +81,8 @@ export function ManualMatcher({ voiceNote, onMatch, onSkip }: ManualMatcherProps
   const { db, isReady } = useDexie()
   const { advisor } = useAuth()
   const { showToast } = useToast()
-  const [visits, setVisits] = useState<any[]>([])
-  const [customers, setCustomers] = useState<any[]>([])
+  const [visits, setVisits] = useState<VisitDexie[]>([])
+  const [customers, setCustomers] = useState<CustomerDexie[]>([])
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<'visits' | 'customers'>('visits')
   const [loading, setLoading] = useState(true)
@@ -122,7 +122,7 @@ export function ManualMatcher({ voiceNote, onMatch, onSkip }: ManualMatcherProps
     c.postcode?.toLowerCase().includes(search.toLowerCase())
   )
 
-  const getVisitBadges = (visit: any) => {
+  const getVisitBadges = (visit: VisitDexie) => {
     const badges: { label: string; variant: 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info' }[] = []
     if (visit.appointmentType) {
       badges.push({ label: visit.appointmentType, variant: 'info' })
@@ -140,7 +140,7 @@ export function ManualMatcher({ voiceNote, onMatch, onSkip }: ManualMatcherProps
     await onMatch(visitId, matchMethod)
   }
 
-  const handleCustomerMatch = async (customer: any) => {
+  const handleCustomerMatch = async (customer: CustomerDexie) => {
     window.location.href = `/customers/${customer.id}`
   }
 
