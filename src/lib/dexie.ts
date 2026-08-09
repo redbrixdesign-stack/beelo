@@ -491,7 +491,7 @@ export class BeeloDB extends Dexie {
 
 constructor() {
     super('BeeloDB')
-    this.version(2).stores({
+    this.version(3).stores({
       advisors: '++id, supabaseId, authUserId, businessName, employmentModel, baseLocation, workingPreferences, commissionRatePercent, vatAdjustmentPercent, taxReservePercent, installOnlyMinutesPerBlind, fullJobMinutesPerBlind, weeklyEarningsTarget, hmrcMileageRateTier1, hmrcMileageRateTier2, hmrcMileageThresholdMiles, consentStatus, sourceEnv, createdAt, updatedAt, [authUserId]',
       customers: '++id, advisorId, customerNumber, phone, postcode, address, displayName, contactPreferences, history, status, sourceEnv, createdAt, updatedAt, [advisorId+customerNumber], [advisorId]',
       visits: '++id, advisorId, customerId, customerNumber, appointmentNumber, jobCode, orderNumber, appointmentType, jobSource, dateTime, timeSlotStart, timeSlotEnd, status, contactedCustomer, blindCount, preVisitNotes, companyScheduledDurationMinutes, estimatedDurationMinutes, location, sourceDocumentId, sourceEnv, outcome, outcomeValue, discountPercent, commissionAmount, notes, createdAt, updatedAt, [advisorId+jobCode], [advisorId+dateTime], [advisorId]',
