@@ -26,13 +26,15 @@ export async function getDocumentImageUrl(path: string, expiresIn = 3600): Promi
   if (path.includes('/storage/v1/object/')) {
     return path
   }
+  // Strip bucket prefix if present (e.g., "documents/1/8.jpg" -> "1/8.jpg")
+  const cleanPath = path.replace(/^documents\//, '')
   const { data, error } = await supabase.storage
     .from('documents')
-    .createSignedUrl(path, expiresIn)
+    .createSignedUrl(cleanPath, expiresIn)
   if (error) {
     console.warn('Failed to create signed URL for document image:', error.message)
     // Fallback to public URL pattern (works if bucket is public)
-    return `${supabaseUrl}/storage/v1/object/public/documents/${path}`
+    return `${supabaseUrl}/storage/v1/object/public/documents/${cleanPath}`
   }
   return data.signedUrl
 }
