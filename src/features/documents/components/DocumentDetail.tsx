@@ -76,12 +76,14 @@ export function DocumentDetail() {
 
   const handleDelete = async () => {
     if (!document || !confirm('Delete this document? This cannot be undone.')) return
+    console.log('[DocumentDetail] Deleting document:', document.id, 'imagePath:', document.imagePath)
     setDeleting(true)
     try {
       await deleteDocument(document.id!)
+      console.log('[DocumentDetail] Document deleted successfully:', document.id)
       navigate('/documents')
     } catch (err) {
-      // handle error
+      console.error('[DocumentDetail] Delete failed:', err)
     } finally {
       setDeleting(false)
     }
