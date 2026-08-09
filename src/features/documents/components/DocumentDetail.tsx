@@ -10,15 +10,27 @@ import { Button } from '@components/ui/Button'
 import { FileText, Image, ChevronLeft, AlertCircle, CheckCircle, Clock, Hash, Trash2, Edit } from 'lucide-react'
 import { DOCUMENT_STATUSES, DocumentStatus } from '@lib/constants'
 import type { DocumentDexie, QuoteLineItemDexie, CommissionLineItemDexie, FitLineItemDexie } from '@lib/dexie'
+import { supabase, getDocumentImageUrl } from '@lib/supabase'
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { documents, loadDocuments, getDocument, quoteLineItems, loadQuoteLineItems, commissionLineItems, loadCommissionLineItems, fitLineItems, loadFitLineItems } = useDocuments()
+  const { documents, loadDocuments, getDocument, deleteDocument, quoteLineItems, loadQuoteLineItems, commissionLineItems, loadCommissionLineItems, fitLineItems, loadFitLineItems } = useDocuments()
   const [document, setDocument] = useState<DocumentDexie | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'quote' | 'commission' | 'fit'>('overview')
+  const [imageUrl, setImageUrl] = useState<string>('')
+
+  useEffect(() => {
+    if (id) loadData()
+  }, [id])
+
+  useEffect(() => {
+    if (document?.imagePath) {
+      getDocumentImageUrl(document.imagePath).then(setImageUrl)
+    }
+  }, [document?.imagePath])
 
   useEffect(() => {
     if (id) loadData()
@@ -65,8 +77,7 @@ export function DocumentDetail() {
     if (!document || !confirm('Delete this document? This cannot be undone.')) return
     setDeleting(true)
     try {
-      // Note: deleteDocument not in hook, would need to add
-      // await deleteDocument(document.id!)
+      await deleteDocument(document.id!)
       navigate('/documents')
     } catch (err) {
       // handle error
@@ -105,7 +116,7 @@ export function DocumentDetail() {
                 flexShrink: 0
               }}>
                 {document.imagePath && (
-                  <img src={document.imagePath} alt="Document" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
+                  <img src={imageUrl || document.imagePath} alt="Document" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
                 )}
               </div>
               <div>

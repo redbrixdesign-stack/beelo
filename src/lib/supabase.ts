@@ -15,4 +15,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
+// Signed URL helper for private storage buckets
+export async function getDocumentImageUrl(path: string, expiresIn = 3600): Promise<string> {
+  if (!path) return ''
+  // If already a full URL (blob:, http:, https:), return as-is
+  if (path.startsWith('blob:') || path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+  // If already a Supabase storage URL, return as-is
+  if (path.includes('/storage/v1/object/')) {
+    return path
+  }
+  const { data, error } = await supabase.storage
+    .from('documents')
+    .createSignedUrl(path, expiresIn)
+  if (error) {
+    console.warn('Failed to create signed URL for document image:', error.message)
+    // Fallback to public URL pattern (works if bucket is public)
+    return `${supabaseUrl}/storage/v1/object/public/documents/${path}`
+  }
+  return data.signedUrl
+}
+
 export type SupabaseClient = typeof supabase

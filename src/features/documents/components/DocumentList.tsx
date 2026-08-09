@@ -10,6 +10,8 @@ import { Input } from '@components/ui/Input'
 import { Select } from '@components/ui/Select'
 import { useDocuments } from '../hooks/useDocuments'
 import { DOCUMENT_TYPES, DocumentType, DOCUMENT_STATUSES, DocumentStatus } from '@lib/constants'
+import { supabase, getDocumentImageUrl } from '@lib/supabase'
+import type { DocumentDexie } from '@lib/dexie'
 
 export function DocumentList() {
   const navigate = useNavigate()
@@ -17,6 +19,7 @@ export function DocumentList() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<DocumentType | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | 'all'>('all')
+  const [imageUrls, setImageUrls] = useState<Record<number, string>>({})
 
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = !search || 
@@ -59,6 +62,19 @@ export function DocumentList() {
   useEffect(() => {
     loadDocuments()
   }, [loadDocuments])
+
+  useEffect(() => {
+    const fetchUrls = async () => {
+      const urls: Record<number, string> = {}
+      for (const doc of documents) {
+        if (doc.imagePath) {
+          urls[doc.id!] = await getDocumentImageUrl(doc.imagePath)
+        }
+      }
+      setImageUrls(urls)
+    }
+    fetchUrls()
+  }, [documents])
 
   if (loading) {
     return <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Loading...</div>
@@ -119,7 +135,7 @@ export function DocumentList() {
               }}>
                 {doc.imagePath && (
                   <img 
-                    src={doc.imagePath} 
+                    src={imageUrls[doc.id!] || doc.imagePath} 
                     alt="Document" 
                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
                   />
