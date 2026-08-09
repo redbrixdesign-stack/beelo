@@ -29,7 +29,7 @@ import { ExpensesPage, NewExpensePage } from './features/expenses/components/Exp
 import { ExpenseReceiptView } from './features/expenses/components/ExpenseReceiptView'
 import { DORPrediction } from './features/dor/components/DORPrediction'
 import { OnboardingFlow } from './features/onboarding/components/OnboardingFlow'
-import { PilotMetricsDashboard } from './features/pilot/components/PilotMetricsDashboard'
+import { TripTrackingPage } from './pages/TripTracking'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -312,6 +312,12 @@ export default function App() {
           <Layout title="Pilot Metrics">
             <PilotMetricsDashboard />
           </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/trips/:visitId" element={
+        <ProtectedRoute>
+          <TripTrackingPage />
         </ProtectedRoute>
       } />
       

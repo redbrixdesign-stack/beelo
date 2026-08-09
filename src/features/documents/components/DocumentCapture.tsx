@@ -89,8 +89,8 @@ export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
                 position: 'absolute',
                 top: 'var(--spacing-sm)',
                 right: 'var(--spacing-sm)',
-                width: '32px',
-                height: '32px',
+                width: '44px',
+                height: '44px',
                 borderRadius: '50%',
                 background: 'rgba(0,0,0,0.7)',
                 color: 'white',
@@ -102,7 +102,7 @@ export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
               }}
               aria-label="Remove image"
             >
-              <X size={16} />
+              <X size={20} />
             </button>
           </div>
         ) : (
