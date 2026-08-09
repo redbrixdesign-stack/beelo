@@ -9,19 +9,79 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+// Safe error serializer - extracts only primitive fields
+function serializeError(error: unknown): { message: string; name?: string; code?: string } {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      name: error.name,
+      code: (error as any).code,
+    }
   }
+  if (typeof error === 'object' && error !== null) {
+    return {
+      message: String(error),
+      name: (error as any).name,
+      code: (error as any).code,
+    }
+  }
+  return { message: String(error) }
+}
 
+// Safe JSON serializer for error responses
+function errorResponse(error: unknown, status: number): Response {
+  return new Response(
+    JSON.stringify({ success: false, error: serializeError(error) }),
+    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+}
+
+// Retry helper with exponential backoff (max 3 attempts)
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 1000
+): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      if (attempt < maxAttempts) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+    throw lastError
+  }
+}
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  // Top-level try/catch for the entire handler
   try {
-    const { document_id, image_path } = await req.json()
-    
-    if (!document_id || !image_path) {
-      return new Response(
-        JSON.stringify({ error: 'Missing document_id or image_path' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders })
+    }
+
+    let documentId: string
+    let imagePath: string
+
+    try {
+      const body = await req.json()
+      documentId = body.document_id
+      imagePath = body.image_path
+    } catch {
+      return errorResponse(new Error('Invalid JSON body'), 400)
+    }
+
+    if (!documentId || !imagePath) {
+      return errorResponse(new Error('Missing document_id or image_path'), 400)
     }
 
     const supabase = createClient(
@@ -32,10 +92,10 @@ serve(async (req) => {
     // Download image from storage
     const { data: imageData, error: downloadError } = await supabase.storage
       .from('documents')
-      .download(image_path)
+      .download(imagePath)
 
     if (downloadError) {
-      throw new Error(`Failed to download image: ${downloadError.message}`)
+      return errorResponse(new Error(`Failed to download image: ${downloadError.message}`), 500)
     }
 
     const imageBuffer = await imageData.arrayBuffer()
@@ -49,26 +109,27 @@ serve(async (req) => {
     }
     base64Image = btoa(base64Image)
 
-    // Call Claude API for OCR
+    // Call Claude API for OCR with retry logic
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 min timeout
     
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': Deno.env.get('CLAUDE_API_KEY')!,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 4096,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `You are an OCR service for UK blinds/sales advisors. Extract line items from this quote or receipt image.
+    const claudeResponse = await withRetry(async () => {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': Deno.env.get('CLAUDE_API_KEY')!,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 4096,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `You are an OCR service for UK blinds/sales advisors. Extract line items from this quote or receipt image.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -106,19 +167,20 @@ Extraction rules:
 - confidence: your confidence in extraction accuracy (0.0-1.0)
 
 UK English spelling. Be precise with numbers. If a field is not visible, use null.`
-            },
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: 'image/jpeg',
-                data: base64Image
+              },
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'image/jpeg',
+                  data: base64Image
+                }
               }
-            }
-          ]
-        }],
-      }),
-      signal: controller.signal
+            ]
+          }],
+        }),
+        signal: controller.signal
+      })
     })
     
     clearTimeout(timeoutId)
@@ -187,7 +249,7 @@ UK English spelling. Be precise with numbers. If a field is not visible, use nul
     }
 
     return new Response(
-      JSON.stringify(normalizedResult),
+      JSON.stringify({ success: true, data: normalizedResult }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
@@ -196,15 +258,9 @@ UK English spelling. Be precise with numbers. If a field is not visible, use nul
     
     // Handle timeout specifically
     if (error.name === 'AbortError' || error.message?.includes('timeout')) {
-      return new Response(
-        JSON.stringify({ error: 'OCR processing timed out. Please try again with a clearer image.' }),
-        { status: 408, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse(new Error('OCR processing timed out. Please try again with a clearer image.'), 408)
     }
     
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return errorResponse(error, 500)
   }
 })
