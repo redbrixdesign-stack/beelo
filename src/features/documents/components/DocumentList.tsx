@@ -1,6 +1,6 @@
 // DocumentList - List component for uploaded documents
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Clock, ChevronRight, Filter } from 'lucide-react'
 import { Card } from '@components/ui/Card'
