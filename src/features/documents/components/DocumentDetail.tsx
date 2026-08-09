@@ -69,7 +69,6 @@ export function DocumentDetail() {
       parsed: 'success',
       matched: 'success',
       error: 'error',
-      ocr_failed: 'error',
     }
     return <Badge variant={variants[status]} size="sm">{status}</Badge>
   }
