@@ -22,6 +22,8 @@ import { LeadForm } from './features/leads/components/LeadForm'
 import { SettingsScreen } from './features/settings/components/SettingsScreen'
 import { MeasurementCheckForm } from './features/measurements/components/MeasurementCheckForm'
 import { MeasurementCheckList } from './features/measurements/components/MeasurementCheckList'
+import { IncidentList } from './features/incidents/components/IncidentList'
+import { IncidentDetail } from './features/incidents/components/IncidentDetail'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -118,6 +120,28 @@ export default function App() {
         <ProtectedRoute>
           <Layout title="Edit Measurement" showBack onBack={() => window.history.back()}>
             <MeasurementCheckForm visitId={parseInt(window.location.pathname.split('/')[2])} checkId={parseInt(window.location.pathname.split('/')[4])} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/incidents" element={
+        <ProtectedRoute>
+          <Layout title="Incidents">
+            <IncidentList />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/incidents/:id" element={
+        <ProtectedRoute>
+          <IncidentDetail />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/visits/:visitId/incidents" element={
+        <ProtectedRoute>
+          <Layout title="Incidents" showBack onBack={() => window.history.back()}>
+            <IncidentList visitId={parseInt(window.location.pathname.split('/')[2])} />
           </Layout>
         </ProtectedRoute>
       } />

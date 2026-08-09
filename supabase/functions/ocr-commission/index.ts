@@ -67,6 +67,7 @@ Return ONLY valid JSON with this exact structure:
       "customerNumber": "string or null",
       "customerName": "string or null",
       "lineType": "sale|service|dor_penalty|refit|adjustment",
+      "lineTypeRaw": "string or null",  // RAW reason text from statement (e.g. "Mismeasure", "Wrong Colour", "Wrong Order", "Installation Damage")
       "commissionRatePercent": number or null,
       "orderValueIncVat": number or null,
       "orderValueExcVat": number or null,
@@ -76,7 +77,7 @@ Return ONLY valid JSON with this exact structure:
   ],
   "confidence": 0.0-1.0,
   "modelVersion": "claude-3-haiku-20240307",
-  "promptVersion": "commission-ocr-v1"
+  "promptVersion": "commission-ocr-v2"
 }
 
 Extraction rules:
@@ -87,6 +88,7 @@ Extraction rules:
 - customerNumber: customer account number if shown
 - customerName: customer name if shown
 - lineType: "sale" (standard sale), "service" (service call), "dor_penalty" (DOR penalty), "refit" (refit work), "adjustment" (manual adjustment)
+- lineTypeRaw: THE EXACT REASON TEXT as shown on the statement for DOR penalties (e.g. "Mismeasure", "Wrong Colour", "Wrong Order", "Installation Damage", "Logistics Damage", "Theft", "Warranty Malfunction"). For non-DOR lines, use null.
 - commissionRatePercent: commission rate as percentage (e.g. 10 for 10%)
 - orderValueIncVat: order value including VAT in GBP
 - orderValueExcVat: order value excluding VAT in GBP
@@ -95,8 +97,9 @@ Extraction rules:
 - confidence: your confidence in extraction accuracy (0.0-1.0)
 
 UK commission statements typically show: Date, Invoice, Job Code, Customer, Type, Rate%, Order Value, Commission Amount.
+For DOR penalty rows, there is typically a reason column with text like "Mismeasure", "Wrong Colour", "Wrong Order".
 Handle £ symbols, commas in numbers, and negative values for adjustments/penalties.
-Be precise with financial figures.`
+Be precise with financial figures. CRITICAL: Capture the exact reason text for DOR penalties.`
             },
             {
               type: 'image',
@@ -139,6 +142,7 @@ Be precise with financial figures.`
         customerNumber: item.customerNumber || null,
         customerName: item.customerName || null,
         lineType: ['sale', 'service', 'dor_penalty', 'refit', 'adjustment'].includes(item.lineType) ? item.lineType : 'sale',
+        lineTypeRaw: item.lineTypeRaw || null,
         commissionRatePercent: typeof item.commissionRatePercent === 'number' ? item.commissionRatePercent : null,
         orderValueIncVat: typeof item.orderValueIncVat === 'number' ? item.orderValueIncVat : null,
         orderValueExcVat: typeof item.orderValueExcVat === 'number' ? item.orderValueExcVat : null,
@@ -147,7 +151,7 @@ Be precise with financial figures.`
       })) : [],
       confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
       modelVersion: result.modelVersion || 'claude-3-haiku-20240307',
-      promptVersion: result.promptVersion || 'commission-ocr-v1',
+      promptVersion: result.promptVersion || 'commission-ocr-v2',
     }
 
     return new Response(

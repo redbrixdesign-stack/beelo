@@ -12,6 +12,7 @@ interface UseIncidentsReturn {
   loading: boolean
   error: string | null
   loadIncidents: () => Promise<void>
+  loadIncidentsByVisit: (visitId: number) => Promise<void>
   createIncident: (incident: Omit<IncidentDexie, 'id' | 'advisorId' | 'createdAt' | 'updatedAt'>) => Promise<number>
   updateIncident: (id: number, updates: Partial<IncidentDexie>) => Promise<void>
   deleteIncident: (id: number) => Promise<void>
@@ -31,10 +32,24 @@ export function useIncidents(): UseIncidentsReturn {
     setLoading(true)
     setError(null)
     try {
-      const data = await db.incidents.where('advisorId').equals(advisorId).reverse().sortBy('discoveredAt')
+      const data = await db.incidents.where('advisorId').equals(advisorId).reverse().sortBy('createdAt')
       setIncidents(data)
     } catch {
       setError('Failed to load incidents')
+    } finally {
+      setLoading(false)
+    }
+  }, [advisorId])
+
+  const loadIncidentsByVisit = useCallback(async (visitId: number) => {
+    if (!advisorId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await db.incidents.where('visitId').equals(visitId).toArray()
+      setIncidents(data)
+    } catch {
+      setError('Failed to load incidents for visit')
     } finally {
       setLoading(false)
     }
@@ -89,6 +104,7 @@ export function useIncidents(): UseIncidentsReturn {
     loading,
     error,
     loadIncidents,
+    loadIncidentsByVisit,
     createIncident,
     updateIncident,
     deleteIncident,

@@ -113,6 +113,26 @@ export type IncidentCrossCheckStatus = typeof INCIDENT_CROSS_CHECK_STATUSES[numb
 export const COMMISSION_LINE_TYPES = ['sale', 'service', 'dor_penalty', 'refit', 'adjustment'] as const
 export type CommissionLineType = typeof COMMISSION_LINE_TYPES[number]
 
+// BusinessRules.md: DOR penalty amounts per blind (flat rate, not percentage)
+export const DOR_PENALTY_TIERS = {
+  standard: { amountPerBlind: 20, maxBlinds: 3 },
+  elevated: { amountPerBlind: 40, maxBlinds: 999 }
+} as const
+export type DorPenaltyTier = keyof typeof DOR_PENALTY_TIERS
+
+// BusinessRules.md: Commission statement raw reasons map to incident types
+export const DOR_REASON_TO_INCIDENT_TYPE = {
+  'Mismeasure': 'mismeasurement',
+  'Wrong Colour': 'wrong_colour',
+  'Wrong Order': 'wrong_product',
+  'Wrong Product': 'wrong_product',
+  'Installation Damage': 'installation_damage',
+  'Window Breakage': 'window_breakage',
+  'Logistics Damage': 'logistics_damage',
+  'Theft': 'theft',
+  'Warranty Malfunction': 'warranty_malfunction',
+} as const
+
 export const EXPENSE_CATEGORIES = ['fuel', 'parking', 'materials', 'tools', 'subsistence', 'accommodation', 'training', 'insurance', 'phone', 'software', 'other'] as const
 export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number]
 

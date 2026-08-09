@@ -14,6 +14,23 @@ const corsHeaders = {
 const COMMISSION_RATE_TOLERANCE = 0.5 // 0.5% tolerance
 const DOR_RATE_THRESHOLD = 2.5 // 2.5% DOR rate threshold
 
+// BusinessRules.md: DOR reason from commission statement maps to incident type
+// Only 'Mismeasure'/'Wrong Colour'/'Wrong Order' → fitter_error (advisor penalty)
+// All other causes (supplier_error, logistics_error, theft, product_defect, etc.) → company responsibility
+const DOR_REASON_TO_CAUSE: Record<string, { type: string; cause: string; countsTowardDor: boolean }> = {
+  'Mismeasure': { type: 'mismeasurement', cause: 'fitter_error', countsTowardDor: true },
+  'Wrong Colour': { type: 'wrong_colour', cause: 'fitter_error', countsTowardDor: true },
+  'Wrong Order': { type: 'wrong_product', cause: 'fitter_error', countsTowardDor: true },
+  'Wrong Product': { type: 'wrong_product', cause: 'fitter_error', countsTowardDor: true },
+  'Installation Damage': { type: 'installation_damage', cause: 'fitter_error', countsTowardDor: true },
+  'Window Breakage': { type: 'window_breakage', cause: 'fitter_error', countsTowardDor: true },
+  'Logistics Damage': { type: 'logistics_damage', cause: 'logistics_error', countsTowardDor: false },
+  'Theft': { type: 'theft', cause: 'theft', countsTowardDor: false },
+  'Warranty Malfunction': { type: 'warranty_malfunction', cause: 'product_defect', countsTowardDor: false },
+  'Customer Error': { type: 'other', cause: 'customer_error', countsTowardDor: false },
+  'Accidental': { type: 'other', cause: 'accidental', countsTowardDor: false },
+}
+
 interface CommissionLineItem {
   id: string
   jobCode: string
@@ -21,6 +38,7 @@ interface CommissionLineItem {
   amountIncVat?: number
   amountExcVat?: number
   lineType?: string
+  lineTypeRaw?: string
 }
 
 interface FitLineItem {
@@ -148,24 +166,38 @@ serve(async (req) => {
           }
         }
 
-        // DOR penalty line — create provisional incident, default to UNKNOWN cause
-        // DO NOT default to fitter_error. BusinessRules.md: only fitter_error opens advisor to penalty.
+        // DOR penalty line — create incident with cause from line_type_raw if available
+        // BusinessRules.md: only fitter_error opens advisor to penalty
         if (item.line_type === 'dor_penalty' && item.amount_inc_vat) {
           const visitMatch = await findVisitByJobCode(item.job_code)
           if (!visitMatch) {
             unmatched.push({ job_code: item.job_code, reason: 'No visit found for DOR penalty line' })
             continue
           }
+
+          // Determine cause from raw reason text (line_type_raw)
+          const rawReason = item.line_type_raw || ''
+          const causeMapping = DOR_REASON_TO_CAUSE[rawReason]
+          let incidentType = 'other'
+          let incidentCause = 'unknown'
+          let countsTowardDor = false
+
+          if (causeMapping) {
+            incidentType = causeMapping.type
+            incidentCause = causeMapping.cause
+            countsTowardDor = causeMapping.countsTowardDor
+          }
+
           incidents.push({
             advisor_id,
             visit_id: visitMatch.id,
             customer_id: visitMatch.customer_id,
-            type: 'other', // raw reason from statement needed to classify (Mismeasure/Wrong Colour/Wrong Order)
-            cause: 'unknown', // DEFAULT: unknown. Requires human review to set cause.
-            cause_detail: `DOR penalty detected: £${item.amount_inc_vat} for job ${item.job_code}. Reason from statement: ${item.line_type}.`,
-            counts_toward_dor: false, // DEFAULT: false. Only set true if cause confirmed as fitter_error.
+            type: incidentType,
+            cause: incidentCause,
+            cause_detail: `DOR penalty: £${item.amount_inc_vat} for job ${item.job_code}. Reason: ${rawReason || 'not specified'}.`,
+            counts_toward_dor: countsTowardDor,
             discovered_at: new Date().toISOString(),
-            description: `DOR penalty from commission statement: ${item.job_code}`,
+            description: `DOR penalty from commission statement: ${item.job_code} (${rawReason || 'unknown reason'})`,
             resolution_status: 'open',
             photos: [],
             commission_line_item_id: item.id,
