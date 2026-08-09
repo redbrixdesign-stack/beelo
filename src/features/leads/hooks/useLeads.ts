@@ -26,14 +26,14 @@ interface UseLeadsReturn {
 }
 
 export function useLeads(): UseLeadsReturn {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [leads, setLeads] = useState<LeadDexie[]>([])
   const [callAttempts, setCallAttempts] = useState<CallAttemptDexie[]>([])
   const [voiceNotes, setVoiceNotes] = useState<VoiceNoteDexie[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadLeads = useCallback(async () => {
     if (!advisorId) return

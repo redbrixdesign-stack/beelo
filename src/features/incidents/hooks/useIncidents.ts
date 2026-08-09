@@ -20,12 +20,12 @@ interface UseIncidentsReturn {
 }
 
 export function useIncidents(): UseIncidentsReturn {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [incidents, setIncidents] = useState<IncidentDexie[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadIncidents = useCallback(async () => {
     if (!advisorId) return

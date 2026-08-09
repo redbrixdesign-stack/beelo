@@ -21,11 +21,11 @@ interface PilotMetricsAggregate {
 }
 
 export function usePilotMetrics() {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [metrics, setMetrics] = useState<PilotMetricsAggregate | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const computeMetrics = useCallback(async () => {
     if (!advisorId) return

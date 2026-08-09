@@ -20,11 +20,11 @@ interface DORMetrics {
 }
 
 export function useDORPrediction(): { metrics: DORMetrics | null; loading: boolean; recompute: () => Promise<void> } {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [metrics, setMetrics] = useState<DORMetrics | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const computeDORPrediction = useCallback(async () => {
     if (!advisorId) return

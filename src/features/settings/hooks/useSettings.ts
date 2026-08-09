@@ -21,12 +21,12 @@ const DEFAULT_SETTINGS = {
 }
 
 export function useSettings() {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [settings, setSettings] = useState<Record<string, any>>(DEFAULT_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadSettings = useCallback(async () => {
     if (!advisorId) return

@@ -23,12 +23,12 @@ interface UseMeasurementChecksReturn {
 }
 
 export function useMeasurementChecks(): UseMeasurementChecksReturn {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [measurementChecks, setMeasurementChecks] = useState<MeasurementCheckDexie[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadMeasurementChecks = useCallback(async (visitId: number) => {
     if (!advisorId) return

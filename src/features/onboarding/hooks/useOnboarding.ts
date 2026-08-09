@@ -17,11 +17,11 @@ interface OnboardingState {
 }
 
 export function useOnboarding() {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [onboardingState, setOnboardingState] = useState<OnboardingState | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadOnboardingState = useCallback(async () => {
     if (!advisorId) return

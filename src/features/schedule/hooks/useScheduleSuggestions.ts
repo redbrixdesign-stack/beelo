@@ -20,12 +20,12 @@ interface UseScheduleSuggestionsReturn {
 }
 
 export function useScheduleSuggestions(): UseScheduleSuggestionsReturn {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [suggestions, setSuggestions] = useState<ScheduleSuggestionDexie[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadSuggestions = useCallback(async () => {
     if (!advisorId) return

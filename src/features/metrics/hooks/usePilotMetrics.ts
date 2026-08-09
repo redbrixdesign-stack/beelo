@@ -14,11 +14,11 @@ interface PilotMetricsResult {
 }
 
 export function usePilotMetrics(): PilotMetricsResult {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [metrics, setMetrics] = useState<PilotMetricDexie[]>([])
   const [loading, setLoading] = useState(true)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadMetrics = useCallback(async () => {
     if (!advisorId) return

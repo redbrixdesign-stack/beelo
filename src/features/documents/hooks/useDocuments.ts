@@ -28,7 +28,7 @@ interface UseDocumentsReturn {
 }
 
 export function useDocuments(): UseDocumentsReturn {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [documents, setDocuments] = useState<DocumentDexie[]>([])
   const [quoteLineItems, setQuoteLineItems] = useState<QuoteLineItemDexie[]>([])
   const [commissionLineItems, setCommissionLineItems] = useState<CommissionLineItemDexie[]>([])
@@ -36,7 +36,7 @@ export function useDocuments(): UseDocumentsReturn {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadDocuments = useCallback(async () => {
     if (!advisorId) return

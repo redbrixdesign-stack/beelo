@@ -21,12 +21,12 @@ interface UseExpensesReturn {
 }
 
 export function useExpenses(): UseExpensesReturn {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [expenses, setExpenses] = useState<ExpenseDexie[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadExpenses = useCallback(async () => {
     if (!advisorId) return

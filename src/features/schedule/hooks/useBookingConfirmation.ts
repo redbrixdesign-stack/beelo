@@ -21,11 +21,11 @@ interface BookingConfirmationData {
 
 export function useBookingConfirmation() {
   const { db, isReady } = useDexie()
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const { showToast } = useToast()
   const [generating, setGenerating] = useState(false)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const generateConfirmation = useCallback(async (data: BookingConfirmationData) => {
     if (!advisorId || !isReady) return null

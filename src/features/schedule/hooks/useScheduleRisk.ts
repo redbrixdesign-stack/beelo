@@ -30,12 +30,12 @@ const DEFAULT_FULL_JOB_MINUTES_PER_BLIND = 33
 
 export function useScheduleRisk(): ScheduleRiskResult & { recompute: () => Promise<void> } {
   const { db, isReady } = useDexie()
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [gaps, setGaps] = useState<ScheduleGap[]>([])
   const [suggestions, setSuggestions] = useState<ScheduleSuggestionDexie[]>([])
   const [advisorSettings, setAdvisorSettings] = useState<{ fullJobMinutesPerBlind: number } | null>(null)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   // Load advisor's full_job_minutes_per_blind
   useEffect(() => {

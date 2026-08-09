@@ -19,12 +19,12 @@ interface UseDeliveryDropNotesReturn {
 }
 
 export function useDeliveryDropNotes(): UseDeliveryDropNotesReturn {
-  const { user } = useAuth()
+  const { advisor } = useAuth()
   const [deliveryDropNotes, setDeliveryDropNotes] = useState<DeliveryDropNoteDexie[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const advisorId = user?.id ? parseInt(user.id) : 0
+  const advisorId = advisor?.id ?? 0
 
   const loadDeliveryDropNotes = useCallback(async () => {
     if (!advisorId) return
