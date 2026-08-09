@@ -10,7 +10,7 @@ import { enqueueSync } from '@lib/sync'
 import { Card } from '@components/ui/Card'
 import { Badge } from '@components/ui/Badge'
 import { Button } from '@components/ui/Button'
-import { ChevronLeft, CheckCircle, SkipNext } from 'lucide-react'
+import { ChevronLeft, CheckCircle, SkipForward } from 'lucide-react'
 import { ScreenshotMatcher } from './ScreenshotMatcher'
 import { ManualMatcher } from './ManualMatcher'
 import { NameHintMatcher } from './NameHintMatcher'
@@ -315,7 +315,7 @@ export function BatchReviewScreen({ initialVoiceNoteId, onComplete, onClose }: B
               size="sm" 
               onClick={() => matchStep === 'screenshot' ? setMatchStep('manual') : matchStep === 'manual' ? setMatchStep('name_hint') : goToNext()}
               disabled={processing}
-              rightIcon={matchStep === 'name_hint' ? <CheckCircle size={16} /> : <SkipNext size={16} />}
+              rightIcon={matchStep === 'name_hint' ? <CheckCircle size={16} /> : <SkipForward size={16} />}
             >
               {matchStep === 'name_hint' ? 'Finish' : 'Skip'}
             </Button>

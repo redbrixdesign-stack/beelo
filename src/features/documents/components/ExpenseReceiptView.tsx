@@ -7,7 +7,7 @@ import { Layout } from '@components/layout/Layout'
 import { Card } from '@components/ui/Card'
 import { Badge } from '@components/ui/Badge'
 import { Button } from '@components/ui/Button'
-import { FileText, Clock, PoundSign, Receipt, AlertTriangle, Trash2, Edit } from 'lucide-react'
+import { FileText, Clock, PoundSterling, Receipt, AlertTriangle, Trash2, Edit } from 'lucide-react'
 import type { DocumentDexie } from '@lib/dexie'
 
 export function ExpenseReceiptView() {

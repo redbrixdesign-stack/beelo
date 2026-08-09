@@ -186,8 +186,8 @@ export function useOCR() {
                 confidence: quoteResult.confidence,
                 extractedAt: new Date(),
                 createdAt: new Date(),
-              },
-            });
+              })
+            }
           } else if (doc.type === 'commission_statement') {
             const commissionResult = result as CommissionOCRResult
             

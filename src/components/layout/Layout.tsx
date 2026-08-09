@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { Header } from './Header'
 import { BottomNav } from './BottomNav'
 import { ToastProvider } from '../ui/Toast'
+import { useOCR } from '@features/documents/hooks/useOCR'
 
 interface LayoutProps {
   children: ReactNode
@@ -18,6 +19,8 @@ export function Layout({
   onBack, 
   onMenuClick 
 }: LayoutProps) {
+  useOCR()
+  
   return (
     <ToastProvider>
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

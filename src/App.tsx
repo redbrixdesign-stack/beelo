@@ -11,6 +11,16 @@ import { CustomerForm } from './components/customers/CustomerForm'
 import { Profile } from './pages/Profile'
 import { Login } from './pages/Login'
 import { SyncStatus } from './pages/SyncStatus'
+import { Documents } from './pages/Documents'
+import { DocumentCapture } from './features/documents/components/DocumentCapture'
+import { DocumentDetail } from './features/documents/components/DocumentDetail'
+import { VoiceCaptureScreen } from './features/voice/components/VoiceCaptureScreen'
+import { BatchReviewScreen } from './features/voice/components/BatchReviewScreen'
+import { Leads } from './features/leads/components/LeadList'
+import { LeadDetail } from './features/leads/components/LeadDetail'
+import { LeadForm } from './features/leads/components/LeadForm'
+import { SettingsScreen } from './features/settings/components/SettingsScreen'
+import { SyncStatus } from './pages/SyncStatus'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -120,6 +130,80 @@ export default function App() {
       <Route path="/profile" element={
         <ProtectedRoute>
           <Profile />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/sync" element={
+        <ProtectedRoute>
+          <Layout title="Sync Status">
+            <SyncStatus />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/documents" element={
+        <ProtectedRoute>
+          <Layout title="Documents">
+            <Documents />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/documents/capture" element={
+        <ProtectedRoute>
+          <Layout title="Capture Document" showBack onBack={() => window.history.back()}>
+            <DocumentCapture />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/documents/:id" element={
+        <ProtectedRoute>
+          <DocumentDetail />
+        </ProtectedRoute>
+      } />
+      
+<Route path="/voice/capture" element={
+        <ProtectedRoute>
+          <VoiceCaptureScreen />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/voice/review" element={
+        <ProtectedRoute>
+          <Layout title="Batch Review">
+            <BatchReviewScreen />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/leads" element={
+        <ProtectedRoute>
+          <Layout title="Leads">
+            <Leads />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/leads/new" element={
+        <ProtectedRoute>
+          <Layout title="New Lead" showBack onBack={() => window.history.back()}>
+            <LeadForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/leads/:id" element={
+        <ProtectedRoute>
+          <Layout title="Lead Detail" showBack onBack={() => window.history.back()}>
+            <LeadDetail />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <SettingsScreen />
         </ProtectedRoute>
       } />
       

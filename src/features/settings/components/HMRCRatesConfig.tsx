@@ -6,7 +6,7 @@ import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Input } from '@components/ui/Input'
 import { Badge } from '@components/ui/Badge'
-import { Save, Info, AlertCircle, PoundSign } from 'lucide-react'
+import { Save, Info, AlertCircle, PoundSterling } from 'lucide-react'
 
 export function HMRCRatesConfig() {
   const { settings, updateSetting, saving } = useSettings()
@@ -40,7 +40,7 @@ export function HMRCRatesConfig() {
             justifyContent: 'center',
             color: 'var(--color-primary)'
           }}>
-            <PoundSign size={20} />
+            <PoundSterling size={20} />
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>HMRC Mileage Rates</h3>

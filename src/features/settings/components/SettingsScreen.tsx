@@ -5,13 +5,13 @@ import { Layout } from '@components/layout/Layout'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Badge } from '@components/ui/Badge'
-import { Settings, PoundSign, Shield, Bell, Palette, Database, RotateCcw, Info } from 'lucide-react'
+import { Settings, PoundSterling, Shield, Bell, Palette, Database, RotateCcw, Info } from 'lucide-react'
 import { HMRCRatesConfig } from './HMRCRatesConfig'
 import { BackupRestore } from './BackupRestore'
 import { useSettings } from '../hooks/useSettings'
 
 const SETTINGS_SECTIONS = [
-  { id: 'hmrc', label: 'HMRC Rates', icon: PoundSign, component: HMRCRatesConfig },
+  { id: 'hmrc', label: 'HMRC Rates', icon: PoundSterling, component: HMRCRatesConfig },
   { id: 'backup', label: 'Backup & Restore', icon: RotateCcw, component: BackupRestore },
   { id: 'about', label: 'About', icon: Info, component: null },
 ] as const

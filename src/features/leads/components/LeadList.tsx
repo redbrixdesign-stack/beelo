@@ -1,17 +1,15 @@
-// LeadList - List component for leads
-
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Phone, Clock, Filter } from 'lucide-react'
+import { Plus, Phone, Mail, AlertTriangle, CheckCircle, Clock, ChevronRight, Filter } from 'lucide-react'
 import { Card } from '@components/ui/Card'
 import { Badge } from '@components/ui/Badge'
 import { Button } from '@components/ui/Button'
 import { Input } from '@components/ui/Input'
 import { Select } from '@components/ui/Select'
 import { useLeads } from '../hooks/useLeads'
-import { LEAD_SOURCES, LEAD_STATUSES, LeadStatus, LeadSource } from '@lib/constants'
+import { LEAD_SOURCES, CALL_OUTCOMES, LEAD_STATUSES, LeadStatus, LeadSource } from '@lib/constants'
 
-export function LeadList() {
+export function Leads() {
   const navigate = useNavigate()
   const { leads, loading, loadLeads, callAttempts, loadCallAttempts } = useLeads()
   const [search, setSearch] = useState('')
@@ -66,7 +64,7 @@ export function LeadList() {
     return <Badge variant={variants[latest.outcome] || 'default'} size="sm">{latest.outcome.replace('_', ' ')}</Badge>
   }
 
-  const handleLeadClick = (lead: LeadDexie) => {
+  const handleLeadClick = (lead: any) => {
     navigate(`/leads/${lead.id}`)
   }
 
@@ -156,4 +154,13 @@ export function LeadList() {
   )
 }
 
-import type { LeadDexie } from '@lib/dexie'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Phone, Mail, AlertTriangle, CheckCircle, Clock, ChevronRight, Filter } from 'lucide-react'
+import { Card } from '@components/ui/Card'
+import { Badge } from '@components/ui/Badge'
+import { Button } from '@components/ui/Button'
+import { Input } from '@components/ui/Input'
+import { Select } from '@components/ui/Select'
+import { useLeads } from '../hooks/useLeads'
+import { LEAD_SOURCES, CALL_OUTCOMES, LEAD_STATUSES, LeadStatus, LeadSource } from '@lib/constants'

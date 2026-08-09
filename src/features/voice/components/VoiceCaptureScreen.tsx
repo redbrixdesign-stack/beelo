@@ -1,7 +1,7 @@
 // VoiceCaptureScreen - Full-screen voice recording UI
 // Launched via deep-link (beelo://voice-capture) or manual button
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Mic, StopCircle, PauseCircle, Play, X, Clock, AlertCircle } from 'lucide-react'
 import { useAudioRecorder } from '../utils/audioRecorder'
 import { parseVoiceCaptureDeepLink, buildVoiceCaptureDeepLink } from '../utils/deepLinkHandler'
@@ -13,14 +13,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToast } from '@components/ui/Toast'
 import { AudioRecorder } from '../utils/audioRecorder'
 
-function fmtDuration(ms: number): string {
+const fmtDuration = (ms: number) => {
   const totalSeconds = Math.floor(ms / 1000)
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
-export function VoiceCaptureScreen(): JSX.Element {
+export function VoiceCaptureScreen() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
@@ -38,6 +38,7 @@ export function VoiceCaptureScreen(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
 
   const { 
+    state, 
     durationMs: recorderDurationMs, 
     start, 
     stop, 
@@ -164,41 +165,189 @@ export function VoiceCaptureScreen(): JSX.Element {
     return <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Loading...</div>
   }
 
+  // Compute styles outside JSX to avoid parsing issues
+  const containerStyle = {
+    minHeight: '100vh',
+    background: 'var(--color-bg)',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: 'var(--spacing-lg)',
+    paddingBottom: 'calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0))'
+  }
+
+  const headerStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 'var(--spacing-xl)'
+  }
+
+  const cancelButtonStyle = {
+    width: '44px',
+    height: '44px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 'var(--radius-md)',
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    color: 'var(--color-text)'
+  }
+
+  const headerTitleStyle = {
+    margin: 0,
+    fontSize: '1.25rem',
+    fontWeight: 600
+  }
+
+  const errorStyle = {
+    marginBottom: 'var(--spacing-lg)',
+    padding: 'var(--spacing-md)',
+    background: 'var(--color-error-muted)',
+    border: '1px solid var(--color-error)',
+    borderRadius: 'var(--radius-md)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--spacing-sm)',
+    color: 'var(--color-error)'
+  }
+
+  const mainStyle = {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+
+  const recordingCircleStyle = {
+    width: '200px',
+    height: '200px',
+    borderRadius: '50%',
+    background: isRecording || isPaused ? 'var(--color-primary-muted)' : 'var(--color-surface)',
+    border: `2px solid ${isRecording ? 'var(--color-primary)' : isPaused ? 'var(--color-warning)' : 'var(--color-border)'}`,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all var(--transition-normal)',
+    animation: isRecording ? 'pulse 1.5s ease-in-out infinite' : 'none',
+    marginBottom: 'var(--spacing-xl)'
+  }
+
+  const durationStyle = {
+    fontSize: '3rem', 
+    fontWeight: 700, 
+    fontFamily: 'var(--font-mono)',
+    color: isRecording ? 'var(--color-primary)' : isPaused ? 'var(--color-warning)' : 'var(--color-text-muted)',
+    fontVariantNumeric: 'tabular-nums'
+  }
+
+  const statusStyle = {
+    marginTop: 'var(--spacing-xs)',
+    fontSize: '0.75rem',
+    color: 'var(--color-text-muted)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em'
+  }
+
+  const triggerStyle = {
+    marginBottom: 'var(--spacing-lg)',
+    fontSize: '0.75rem',
+    color: 'var(--color-text-muted)'
+  }
+
+  const offlineStyle = {
+    marginBottom: 'var(--spacing-lg)',
+    padding: 'var(--spacing-sm) var(--spacing-md)',
+    background: 'var(--color-warning-muted)',
+    borderRadius: 'var(--radius-full)',
+    fontSize: '0.75rem',
+    color: '#1a1a2e',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 'var(--spacing-xs)'
+  }
+
+  const controlsStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 'var(--spacing-lg)',
+    width: '100%',
+    maxWidth: '320px'
+  }
+
+  const controlCancelButtonStyle = {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    color: 'var(--color-text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: recordingState === 'idle' ? 0.5 : 1
+  }
+
+  const pauseButtonStyle = {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    background: isPaused ? 'var(--color-warning-muted)' : 'var(--color-primary-muted)',
+    border: `2px solid ${isPaused ? 'var(--color-warning)' : 'var(--color-primary)'}`,
+    color: isPaused ? 'var(--color-warning)' : 'var(--color-primary)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+
+  const recordButtonStyle = {
+    width: '88px',
+    height: '88px',
+    borderRadius: '50%',
+    background: isRecording || isPaused ? 'var(--color-error)' : 'var(--color-primary)',
+    border: 'none',
+    color: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: isRecording ? '0 0 0 4px var(--color-error-muted)' : 
+               isPaused ? '0 0 0 4px var(--color-warning-muted)' : 
+               '0 4px 12px var(--color-primary-muted)',
+    animation: isRecording ? 'pulse-record 1.5s ease-in-out infinite' : 'none',
+    transform: isRecording || isPaused ? 'scale(1.05)' : 'scale(1)',
+    transition: 'all var(--transition-fast)'
+  }
+
+  const tipsStyle = {
+    marginTop: 'var(--spacing-xl)',
+    padding: 'var(--spacing-md)',
+    background: 'var(--color-surface)',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--color-border)',
+    width: '100%',
+    maxWidth: '400px'
+  }
+
+  if (!isReady) {
+    return <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Loading...</div>
+  }
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--color-bg)',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: 'var(--spacing-lg)',
-      paddingBottom: 'calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0))'
-    }}>
-      <header style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 'var(--spacing-xl)'
-      }}>
+    <div style={containerStyle}>
+      <header style={headerStyle}>
         <button
           onClick={handleCancel}
           disabled={recordingState === 'saving'}
-          style={{
-            width: '44px',
-            height: '44px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text)'
-          }}
+          style={cancelButtonStyle}
           aria-label="Cancel"
         >
           <X size={24} />
         </button>
         
-        <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+        <h1 style={headerTitleStyle}>
           {triggerMethod === 'siri_shortcut' ? 'Siri Voice Note' : 
            triggerMethod === 'assistant_action' ? 'Google Voice Note' : 
            'Record Voice Note'}
@@ -208,102 +357,39 @@ export function VoiceCaptureScreen(): JSX.Element {
       </header>
 
       {error && (
-        <div style={{
-          marginBottom: 'var(--spacing-lg)',
-          padding: 'var(--spacing-md)',
-          background: 'var(--color-error-muted)',
-          border: '1px solid var(--color-error)',
-          borderRadius: 'var(--radius-md)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--spacing-sm)',
-          color: 'var(--color-error)'
-        }}>
+        <div style={errorStyle}>
           <AlertCircle size={20} />
           <span style={{ flex: 1 }}>{error}</span>
         </div>
       )}
 
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{
-          width: '200px',
-          height: '200px',
-          borderRadius: '50%',
-          background: isRecording || isPaused ? 'var(--color-primary-muted)' : 'var(--color-surface)',
-          border: `2px solid ${isRecording ? 'var(--color-primary)' : isPaused ? 'var(--color-warning)' : 'var(--color-border)'}`,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all var(--transition-normal)',
-          animation: isRecording ? 'pulse 1.5s ease-in-out infinite' : 'none',
-          marginBottom: 'var(--spacing-xl)'
-        }>
-          <div style={{ 
-            fontSize: '3rem', 
-            fontWeight: 700, 
-            fontFamily: 'var(--font-mono)',
-            color: isRecording ? 'var(--color-primary)' : isPaused ? 'var(--color-warning)' : 'var(--color-text-muted)',
-            fontVariantNumeric: 'tabular-nums'
-          }}>
+      <main style={mainStyle}>
+        <div style={recordingCircleStyle}>
+          <div style={durationStyle}>
             {fmtDuration(durationMs)}
           </div>
-          <div style={{ 
-            marginTop: 'var(--spacing-xs)',
-            fontSize: '0.75rem',
-            color: 'var(--color-text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em'
-          }}>
+          <div style={statusStyle}>
             {isRecording ? 'Recording' : isPaused ? 'Paused' : 'Ready'}
           </div>
         </div>
 
-        <div style={{ marginBottom: 'var(--spacing-lg)', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+        <div style={triggerStyle}>
           Trigger: {triggerMethod === 'siri_shortcut' ? 'Siri Shortcut' : 
                     triggerMethod === 'assistant_action' ? 'Google Assistant' : 
                     'Manual Button'}
         </div>
 
         {!isOnline && (
-          <div style={{
-            marginBottom: 'var(--spacing-lg)',
-            padding: 'var(--spacing-sm) var(--spacing-md)',
-            background: 'var(--color-warning-muted)',
-            borderRadius: 'var(--radius-full)',
-            fontSize: '0.75rem',
-            color: '#1a1a2e',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-xs)'
-          }}>
+          <div style={offlineStyle}>
             <span>📴</span> Offline — recording saved locally
           </div>
         )}
 
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 'var(--spacing-lg)',
-          width: '100%',
-          maxWidth: '320px'
-        }}>
+        <div style={controlsStyle}>
           <button
             onClick={handleCancel}
             disabled={recordingState === 'saving'}
-            style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: recordingState === 'idle' ? 0.5 : 1
-            }}
+            style={controlCancelButtonStyle}
             aria-label="Cancel"
           >
             <X size={28} />
@@ -313,17 +399,7 @@ export function VoiceCaptureScreen(): JSX.Element {
             <button
               onClick={handlePauseResume}
               disabled={recordingState === 'saving'}
-              style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                background: isPaused ? 'var(--color-warning-muted)' : 'var(--color-primary-muted)',
-                border: `2px solid ${isPaused ? 'var(--color-warning)' : 'var(--color-primary)'}`,
-                color: isPaused ? 'var(--color-warning)' : 'var(--color-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
+              style={pauseButtonStyle}
               aria-label={isPaused ? 'Resume recording' : 'Pause recording'}
             >
               {isPaused ? <Play size={28} /> : <PauseCircle size={28} />}
@@ -333,23 +409,7 @@ export function VoiceCaptureScreen(): JSX.Element {
           <button
             onClick={recordingState === 'idle' ? handleStartRecording : stop}
             disabled={recordingState === 'saving'}
-            style={{
-              width: '88px',
-              height: '88px',
-              borderRadius: '50%',
-              background: isRecording || isPaused ? 'var(--color-error)' : 'var(--color-primary)',
-              border: 'none',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: isRecording ? '0 0 0 4px var(--color-error-muted)' : 
-                         isPaused ? '0 0 0 4px var(--color-warning-muted)' : 
-                         '0 4px 12px var(--color-primary-muted)',
-              animation: isRecording ? 'pulse-record 1.5s ease-in-out infinite' : 'none',
-              transform: isRecording || isPaused ? 'scale(1.05)' : 'scale(1)',
-              transition: 'all var(--transition-fast)'
-            }}
+            style={recordButtonStyle}
             aria-label={isRecording || isPaused ? 'Stop recording' : 'Start recording'}
           >
             {isRecording || isPaused ? (
@@ -362,15 +422,7 @@ export function VoiceCaptureScreen(): JSX.Element {
           <div style={{ width: '64px' }} />
         </div>
 
-        <div style={{
-          marginTop: 'var(--spacing-xl)',
-          padding: 'var(--spacing-md)',
-          background: 'var(--color-surface)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--color-border)',
-          width: '100%',
-          maxWidth: '400px'
-        }}>
+        <div style={tipsStyle}>
           <h3 style={{ margin: '0 0 var(--spacing-sm)', fontSize: '0.875rem', fontWeight: 600 }}>
             Tips for best results
           </h3>
