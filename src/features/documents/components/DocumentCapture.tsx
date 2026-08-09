@@ -1,24 +1,20 @@
-// DocumentCapture - Camera/gallery upload UI for documents
+// DocumentCapture - Camera/gallery upload UI for documents (auto-classifies)
 
 import { useState, useRef } from 'react'
-import { Camera, FileText, X, Upload } from 'lucide-react'
+import { Camera, FileText, X, Upload, Zap } from 'lucide-react'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
-import { Input } from '@components/ui/Input'
-import { Select } from '@components/ui/Select'
-import { DOCUMENT_TYPES, DocumentType } from '@lib/constants'
+import { Badge } from '@components/ui/Badge'
 
 interface DocumentCaptureProps {
-  onCapture: (file: File, type: DocumentType, subtype?: string, notes?: string) => Promise<void>
+  onCapture: (file: File, type?: string, subtype?: string, notes?: string) => Promise<void>
   disabled?: boolean
 }
 
 export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
-  const [selectedType, setSelectedType] = useState<DocumentType>('quote_or_receipt')
-  const [subtype, setSubtype] = useState('')
-  const [notes, setNotes] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [detectedType, setDetectedType] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,6 +23,7 @@ export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
       const reader = new FileReader()
       reader.onload = (e) => setPreview(e.target?.result as string)
       reader.readAsDataURL(file)
+      setDetectedType(null)
     }
   }
 
@@ -38,16 +35,14 @@ export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
     if (!preview) return
     setUploading(true)
     try {
-      // Convert base64 to file
       const response = await fetch(preview)
       const blob = await response.blob()
       const file = new File([blob], `document-${Date.now()}.jpg`, { type: 'image/jpeg' })
       
-      await onCapture(file, selectedType, subtype || undefined, notes || undefined)
+      await onCapture(file, undefined, undefined, undefined)
       
       setPreview(null)
-      setSubtype('')
-      setNotes('')
+      setDetectedType(null)
     } catch (err) {
       console.error('Failed to capture document:', err)
     } finally {
@@ -57,39 +52,17 @@ export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
 
   const handleRemove = () => {
     setPreview(null)
+    setDetectedType(null)
   }
 
   return (
     <Card padding="lg">
-      <h3 style={{ margin: '0 0 var(--spacing-lg)', fontSize: '1rem', fontWeight: 600 }}>Capture Document</h3>
-
-      <Select
-        label="Document Type"
-        value={selectedType}
-        onChange={e => setSelectedType(e.target.value as DocumentType)}
-        options={DOCUMENT_TYPES.map(t => ({ value: t, label: t.replace(/_/g, ' ') }))}
-        disabled={disabled || uploading}
-      />
-
-      {(selectedType === 'quote_or_receipt' || selectedType === 'fit_completion_receipt') && (
-        <Input
-          label="Subtype (optional)"
-          placeholder="e.g. roller, venetian, roman"
-          value={subtype}
-          onChange={e => setSubtype(e.target.value)}
-          disabled={disabled || uploading}
-        />
-      )}
-
-      <Input
-        label="Notes (optional)"
-        value={notes}
-        onChange={e => setNotes(e.target.value)}
-        placeholder="Additional context..."
-        multiline
-        rows={2}
-        disabled={disabled || uploading}
-      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Capture Document</h3>
+        <Badge variant="info" size="sm">
+          <Zap size={12} style={{ marginRight: 4 }} /> Auto-detects type
+        </Badge>
+      </div>
 
       <div style={{ marginTop: 'var(--spacing-md)' }}>
         {preview ? (
@@ -160,6 +133,15 @@ export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
           </div>
         )}
       </div>
+
+      {detectedType && (
+        <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', background: 'var(--color-primary-muted)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+          <FileText size={16} style={{ color: 'var(--color-primary)' }} />
+          <span style={{ fontSize: '0.85rem', color: 'var(--color-primary)' }}>
+            Detected: {detectedType.replace(/_/g, ' ')}
+          </span>
+        </div>
+      )}
 
       <Button
         variant="primary"

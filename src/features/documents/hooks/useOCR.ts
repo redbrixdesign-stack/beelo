@@ -57,6 +57,51 @@ interface FitOCRResult {
   promptVersion: string
 }
 
+interface DeliveryOCRResult {
+  jobCode: string
+  customerNumber: string
+  deliveryDate?: string
+  items: Array<{
+    lineNumber: number
+    description: string
+    quantity: number
+    status: 'delivered' | 'pending' | 'damaged' | 'returned'
+  }>
+  confidence: number
+  modelVersion: string
+  promptVersion: string
+}
+
+interface ExpenseOCRResult {
+  merchant?: string
+  date?: string
+  amount?: number
+  vatAmount?: number
+  category: string
+  items: Array<{
+    description: string
+    amount: number
+    vatAmount?: number
+  }>
+  confidence: number
+  modelVersion: string
+  promptVersion: string
+}
+
+interface ClassifyResult {
+  documentType: string
+  confidence: number
+  reasoning: string
+}
+
+const EDGE_FUNCTION_MAP: Record<string, string> = {
+  quote_or_receipt: 'ocr-quote',
+  commission_statement: 'ocr-commission',
+  fit_completion_receipt: 'ocr-fit-completion',
+  delivery_drop_note: 'ocr-delivery-drop-note',
+  expense_receipt: 'ocr-expense-receipt',
+}
+
 export function useOCR() {
   const { db, isReady } = useDexie()
   const { advisor } = useAuth()
@@ -64,6 +109,56 @@ export function useOCR() {
   const [processing, setProcessing] = useState(false)
   const [lastProcessed, setLastProcessed] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const classifyDocument = useCallback(async (storagePath: string): Promise<ClassifyResult | null> => {
+    try {
+      const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/classify-document`
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ image_path: storagePath }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(`Classification failed: ${errorData.error || 'Unknown error'}`)
+      }
+
+      return await response.json()
+    } catch (err) {
+      console.error('Document classification failed:', err)
+      return null
+    }
+  }, [])
+
+  const callOCRFunction = useCallback(async (
+    edgeFunctionName: string,
+    documentId: number,
+    storagePath: string
+  ): Promise<any> => {
+    const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${edgeFunctionName}`
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        document_id: String(documentId),
+        image_path: storagePath,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(`OCR failed: ${errorData.error || 'Unknown error'}`)
+    }
+
+    return await response.json()
+  }, [])
 
   const processPendingDocuments = useCallback(async () => {
     if (!isReady || !advisor || processing) return
@@ -112,16 +207,28 @@ export function useOCR() {
             await db.documents.update(doc.id!, { imagePath: storagePath })
           }
 
-          // Determine which OCR function to call based on document type
-          const edgeFunctionName: string = (() => {
-            switch (doc.type) {
-              case 'quote_or_receipt': return 'ocr-quote'
-              case 'commission_statement': return 'ocr-commission'
-              case 'fit_completion_receipt': return 'ocr-fit-completion'
-              default: return ''
+          // Classify document type if not already set or if generic
+          let documentType = doc.type
+          const needsClassification = !doc.type || doc.type === 'quote_or_receipt' // default type
+          
+          if (needsClassification) {
+            await db.documents.update(doc.id!, { status: 'classifying', updatedAt: new Date() })
+            const classification = await classifyDocument(storagePath)
+            
+            if (classification && classification.confidence > 0.5) {
+              documentType = classification.documentType
+              await db.documents.update(doc.id!, { 
+                type: documentType as any,
+                status: 'uploaded',
+                updatedAt: new Date(),
+              })
+              console.log(`Document ${doc.id} classified as ${documentType} (${classification.reasoning})`)
             }
-          })()
+          }
 
+          // Determine which OCR function to call based on document type
+          const edgeFunctionName = EDGE_FUNCTION_MAP[documentType]
+          
           if (!edgeFunctionName) {
             await db.documents.update(doc.id!, { status: 'error', updatedAt: new Date() })
             continue
@@ -131,32 +238,12 @@ export function useOCR() {
           await db.documents.update(doc.id!, { status: 'processing', updatedAt: new Date() })
 
           // Call OCR Edge Function
-          const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${edgeFunctionName}`
-          const response = await fetch(edgeFunctionUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-              document_id: String(doc.id),
-              image_path: storagePath,
-              document_type: doc.type,
-            }),
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(`OCR failed: ${errorData.error || 'Unknown error'}`)
-          }
-
-          const result = await response.json()
+          const result = await callOCRFunction(edgeFunctionName, doc.id!, storagePath)
 
           // Process based on document type
-          if (doc.type === 'quote_or_receipt') {
+          if (documentType === 'quote_or_receipt') {
             const quoteResult = result as OCRResult
             
-            // Update document with parsed JSON
             await db.documents.update(doc.id!, {
               parsedJson: { lineItems: quoteResult.lineItems },
               status: 'parsed',
@@ -167,7 +254,6 @@ export function useOCR() {
               updatedAt: new Date(),
             })
 
-            // Create QuoteLineItem records
             for (const lineItem of quoteResult.lineItems) {
               await db.quoteLineItems.add({
                 documentId: doc.id!,
@@ -188,7 +274,7 @@ export function useOCR() {
                 createdAt: new Date(),
               })
             }
-          } else if (doc.type === 'commission_statement') {
+          } else if (documentType === 'commission_statement') {
             const commissionResult = result as CommissionOCRResult
             
             await db.documents.update(doc.id!, {
@@ -223,7 +309,7 @@ export function useOCR() {
                 createdAt: new Date(),
               })
             }
-          } else if (doc.type === 'fit_completion_receipt') {
+          } else if (documentType === 'fit_completion_receipt') {
             const fitResult = result as FitOCRResult
             
             await db.documents.update(doc.id!, {
@@ -253,9 +339,42 @@ export function useOCR() {
                 createdAt: new Date(),
               })
             }
+          } else if (documentType === 'delivery_drop_note') {
+            const deliveryResult = result as DeliveryOCRResult
+            
+            await db.documents.update(doc.id!, {
+              parsedJson: { 
+                jobCode: deliveryResult.jobCode,
+                customerNumber: deliveryResult.customerNumber,
+                deliveryDate: deliveryResult.deliveryDate,
+                items: deliveryResult.items 
+              },
+              status: 'parsed',
+              modelVersion: deliveryResult.modelVersion,
+              promptVersion: deliveryResult.promptVersion,
+              confidence: deliveryResult.confidence,
+              extractedAt: new Date(),
+              updatedAt: new Date(),
+            })
+
+            // TODO: Add deliveryDropNoteLineItems table if needed
+          } else if (documentType === 'expense_receipt') {
+            const expenseResult = result as ExpenseOCRResult
+            
+            await db.documents.update(doc.id!, {
+              parsedJson: expenseResult,
+              status: 'parsed',
+              modelVersion: expenseResult.modelVersion,
+              promptVersion: expenseResult.promptVersion,
+              confidence: expenseResult.confidence,
+              extractedAt: new Date(),
+              updatedAt: new Date(),
+            })
+
+            // TODO: Add expenseLineItems table if needed
           }
 
-          console.log(`OCR processed document ${doc.id} (${doc.type})`)
+          console.log(`OCR processed document ${doc.id} (${documentType})`)
         } catch (err) {
           console.error(`Failed to process document ${doc.id}:`, err)
           await db.documents.update(doc.id!, {
@@ -271,7 +390,7 @@ export function useOCR() {
     } finally {
       setProcessing(false)
     }
-  }, [isReady, db])
+  }, [isReady, db, classifyDocument, callOCRFunction])
 
   // Auto-process when sync is complete
   useEffect(() => {

@@ -50,15 +50,13 @@ export function Documents() {
     return <Badge variant={variants[status] || 'default'} size="sm">{status}</Badge>
   }
 
-  const handleCapture = async (file: File, type: DocumentType, subtype?: string, notes?: string) => {
+  const handleCapture = async (file: File, _type?: string, _subtype?: string, _notes?: string) => {
     await createDocument({
-      type,
-      subtype,
+      type: 'quote_or_receipt', // placeholder, will be auto-classified
       imagePath: URL.createObjectURL(file),
       status: 'uploaded',
       matchStatus: 'unmatched',
       sourceEnv: (import.meta.env.VITE_SOURCE_ENV as any) || 'live',
-      additionalNotes: notes,
     })
   }
 
