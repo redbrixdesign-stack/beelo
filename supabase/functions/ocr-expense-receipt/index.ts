@@ -121,9 +121,14 @@ Be precise with financial figures.`
     try {
       result = JSON.parse(ocrText)
     } catch {
-      const jsonMatch = ocrText.match(/\{[\s\S]*\}/)
+      // Non-greedy match for first complete JSON object
+      const jsonMatch = ocrText.match(/\{[\s\S]*?\}/)
       if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0])
+        try {
+          result = JSON.parse(jsonMatch[0])
+        } catch {
+          throw new Error('Failed to parse OCR result')
+        }
       } else {
         throw new Error('Failed to parse OCR result')
       }

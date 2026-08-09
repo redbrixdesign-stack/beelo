@@ -114,9 +114,14 @@ additionalNotes: ANY text visible that doesn't fit the classification — handwr
     try {
       result = JSON.parse(ocrText)
     } catch {
-      const jsonMatch = ocrText.match(/\{[\s\S]*\}/)
+      // Non-greedy match for first complete JSON object
+      const jsonMatch = ocrText.match(/\{[\s\S]*?\}/)
       if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0])
+        try {
+          result = JSON.parse(jsonMatch[0])
+        } catch {
+          throw new Error('Failed to parse classification result')
+        }
       } else {
         throw new Error('Failed to parse classification result')
       }
