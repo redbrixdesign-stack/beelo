@@ -204,7 +204,7 @@ export function useOCR() {
               .from('documents')
               .upload(fileName, blob, {
                 contentType: 'image/jpeg',
-                upsert: false
+                upsert: true
               })
             
             if (uploadError) {
