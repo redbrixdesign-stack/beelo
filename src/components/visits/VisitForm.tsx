@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth.tsx'
-import { useDexie } from '../../hooks/useDexie.tsx'
-import { useToast } from '../ui/Toast.tsx'
-import { enqueueSync } from '../../lib/sync.ts'
-import { Button } from '../ui/Button.tsx'
-import { Input } from '../ui/Input.tsx'
-import { Textarea } from '../ui/Input.tsx'
-import { Select } from '../ui/Select.tsx'
-import { Card } from '../ui/Card.tsx'
-import { visitSchema, type VisitInput } from '../../lib/validation.ts'
+import { useAuth } from '../../hooks/useAuth'
+import { useDexie } from '../../hooks/useDexie'
+import { useToast } from '../ui/Toast'
+import { enqueueSync } from '../../lib/sync'
+import { Button } from '../ui/Button'
+import { Input } from '../ui/Input'
+import { Textarea } from '../ui/Input'
+import { Select } from '../ui/Select'
+import { Card } from '../ui/Card'
+import { visitSchema, type VisitInput } from '../../lib/validation'
 import { 
   OUTCOME_TAXONOMY, 
   APPOINTMENT_TYPES, 
@@ -17,8 +17,11 @@ import {
   type OutcomeTaxonomy, 
   type AppointmentType, 
   type JobSource 
-} from '../../lib/constants.ts'
-import type { VisitDexie } from '../../lib/dexie.ts'
+} from '../../lib/constants'
+import type { VisitDexie } from '../../lib/dexie'
+import { ScheduleRiskBanner, BookingConfirmationDraft } from '@features/schedule'
+import { useScheduleRisk } from '@features/schedule/hooks/useScheduleRisk'
+import { AlertTriangle, Clock } from 'lucide-react'
 
 export function VisitForm() {
   const navigate = useNavigate()
@@ -29,6 +32,7 @@ export function VisitForm() {
   const isEditing = !!id
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showBookingDraft, setShowBookingDraft] = useState(false)
   const [formData, setFormData] = useState<VisitInput>({
     customerId: '',
     customerNumber: '',
@@ -37,7 +41,7 @@ export function VisitForm() {
     orderNumber: '',
     appointmentType: 'sales',
     jobSource: 'self_sold',
-    dateTime: new Date().toISOString(),
+    dateTime: new Date().toISOString().slice(0, 16),
     timeSlotStart: undefined,
     timeSlotEnd: undefined,
     status: '',
@@ -57,6 +61,11 @@ export function VisitForm() {
   const [errors, setErrors] = useState<Partial<Record<keyof VisitInput, string>>>({})
   const [customers, setCustomers] = useState<Array<{ id: number; customerNumber: string; displayName?: string }>>([])
 
+  // Schedule risk
+  const { gaps, overallRisk, suggestions, recompute: recomputeScheduleRisk } = useScheduleRisk()
+  const highRiskCount = gaps.filter(g => g.riskLevel === 'high').length
+  const mediumRiskCount = gaps.filter(g => g.riskLevel === 'medium').length
+
   useEffect(() => {
     if (isReady && advisor) {
       loadCustomers()
@@ -68,6 +77,13 @@ export function VisitForm() {
       loadVisit()
     }
   }, [isEditing, isReady, advisor])
+
+  // Recompute schedule risk when blind count or date changes
+  useEffect(() => {
+    if (formData.blindCount && formData.dateTime) {
+      recomputeScheduleRisk()
+    }
+  }, [formData.blindCount, formData.dateTime, recomputeScheduleRisk])
 
   const loadCustomers = async () => {
     if (!advisor) return
@@ -259,6 +275,15 @@ export function VisitForm() {
         <Button variant="ghost" onClick={() => navigate('/visits')}>Cancel</Button>
       </div>
 
+      {/* Schedule Risk Banner */}
+      {(highRiskCount > 0 || mediumRiskCount > 0) && (
+        <ScheduleRiskBanner
+          gaps={gaps}
+          overallRisk={overallRisk}
+          onViewSuggestions={() => navigate('/incidents')} // TODO: navigate to schedule suggestions
+        />
+      )}
+
       <Card padding="lg">
         <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1rem', fontWeight: 600 }}>Job Details</h2>
         
@@ -367,7 +392,8 @@ export function VisitForm() {
             Estimated duration: {formData.estimatedDurationMinutes} min ({formData.blindCount} blinds × {advisor?.fullJobMinutesPerBlind} min)
             {formData.companyScheduledDurationMinutes && formData.estimatedDurationMinutes > formData.companyScheduledDurationMinutes && (
               <span style={{ color: 'var(--color-error)', marginLeft: 'var(--spacing-sm)' }}>
-                ⚠ Exceeds company slot by {formData.estimatedDurationMinutes - formData.companyScheduledDurationMinutes} min
+                <AlertTriangle size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                Exceeds company slot by {formData.estimatedDurationMinutes - formData.companyScheduledDurationMinutes} min
               </span>
             )}
           </p>
@@ -382,6 +408,20 @@ export function VisitForm() {
           fullWidth
         />
       </Card>
+
+      {/* Booking Confirmation Draft */}
+      {!isEditing && formData.customerId && formData.dateTime && (
+        <BookingConfirmationDraft
+          visit={{
+            id: 0,
+            customerNumber: formData.customerNumber,
+            displayName: customers.find(c => String(c.id) === formData.customerId)?.displayName,
+            dateTime: new Date(formData.dateTime),
+            preVisitNotes: formData.preVisitNotes,
+          } as any}
+          onClose={() => setShowBookingDraft(false)}
+        />
+      )}
 
       <Card padding="lg">
         <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1rem', fontWeight: 600 }}>Outcome & Notes</h2>

@@ -15,8 +15,8 @@ interface UseScheduleSuggestionsReturn {
   createSuggestion: (suggestion: Omit<ScheduleSuggestionDexie, 'id' | 'advisorId' | 'createdAt' | 'updatedAt'>) => Promise<number>
   updateSuggestion: (id: number, updates: Partial<ScheduleSuggestionDexie>) => Promise<void>
   deleteSuggestion: (id: number) => Promise<void>
-  acceptSuggestion: (id: number) => Promise<void>
   dismissSuggestion: (id: number) => Promise<void>
+  acceptSuggestion: (id: number) => Promise<void>
 }
 
 export function useScheduleSuggestions(): UseScheduleSuggestionsReturn {
@@ -36,7 +36,7 @@ export function useScheduleSuggestions(): UseScheduleSuggestionsReturn {
         .where('advisorId')
         .equals(advisorId)
         .reverse()
-        .sortBy('date')
+        .sortBy('createdAt')
       setSuggestions(data)
     } catch {
       setError('Failed to load schedule suggestions')
@@ -55,7 +55,7 @@ export function useScheduleSuggestions(): UseScheduleSuggestionsReturn {
       sourceEnv,
       createdAt: now,
       updatedAt: now,
-    })
+    } as ScheduleSuggestionDexie)
 
     await enqueueSync('scheduleSuggestions', localId, 'create', {
       ...suggestion,
@@ -81,12 +81,12 @@ export function useScheduleSuggestions(): UseScheduleSuggestionsReturn {
     await loadSuggestions()
   }, [advisorId, loadSuggestions])
 
-  const acceptSuggestion = useCallback(async (id: number) => {
-    await updateSuggestion(id, { status: 'accepted', updatedAt: new Date() })
+  const dismissSuggestion = useCallback(async (id: number) => {
+    await updateSuggestion(id, { status: 'dismissed' })
   }, [updateSuggestion])
 
-  const dismissSuggestion = useCallback(async (id: number) => {
-    await updateSuggestion(id, { status: 'dismissed', updatedAt: new Date() })
+  const acceptSuggestion = useCallback(async (id: number) => {
+    await updateSuggestion(id, { status: 'accepted' })
   }, [updateSuggestion])
 
   useEffect(() => {
@@ -101,14 +101,7 @@ export function useScheduleSuggestions(): UseScheduleSuggestionsReturn {
     createSuggestion,
     updateSuggestion,
     deleteSuggestion,
-    acceptSuggestion,
     dismissSuggestion,
+    acceptSuggestion,
   }
 }
-
-import { useState, useEffect, useCallback } from 'react'
-import { db } from '@lib/dexie'
-import { useAuth } from '@hooks/useAuth'
-import { enqueueSync } from '@lib/sync'
-import { getDefaultSourceEnv } from '@lib/dexie'
-import type { ScheduleSuggestionDexie } from '@lib/dexie'

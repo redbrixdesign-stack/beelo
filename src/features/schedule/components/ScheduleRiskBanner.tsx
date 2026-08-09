@@ -1,137 +1,92 @@
-// ScheduleRiskBanner - Banner component showing schedule risk warnings
+// ScheduleRiskBanner - Banner showing schedule risk for a visit or overall
 
-import { useScheduleRisk } from '../hooks/useScheduleRisk'
-import { AlertTriangle, ChevronRight } from 'lucide-react'
+import { AlertTriangle, Clock, ChevronRight, Info } from 'lucide-react'
 import { Badge } from '@components/ui/Badge'
 import { Button } from '@components/ui/Button'
-import { ScheduleRiskLevel } from '@lib/constants'
+import { ScheduleGap, ScheduleRiskLevel } from '../hooks/useScheduleRisk'
 
 interface ScheduleRiskBannerProps {
-  onViewDetails?: () => void
+  gaps: ScheduleGap[]
+  overallRisk: ScheduleRiskLevel
+  onViewSuggestions?: () => void
   compact?: boolean
 }
 
-export function ScheduleRiskBanner({ onViewDetails, compact = false }: ScheduleRiskBannerProps) {
-  const { gaps, overallRisk } = useScheduleRisk()
+const riskStyles: Record<ScheduleRiskLevel, { bg: string; border: string; text: string; icon: typeof AlertTriangle; label: string }> = {
+  low: { bg: 'var(--color-success-muted)', border: 'var(--color-success)', text: 'var(--color-success)', icon: Info, label: 'Low Risk' },
+  medium: { bg: 'var(--color-warning-muted)', border: 'var(--color-warning)', text: 'var(--color-warning)', icon: AlertTriangle, label: 'Medium Risk' },
+  high: { bg: 'var(--color-error-muted)', border: 'var(--color-error)', text: 'var(--color-error)', icon: AlertTriangle, label: 'High Risk' },
+}
 
-  if (overallRisk === 'low' || gaps.length === 0) {
-    return null
-  }
-
+export function ScheduleRiskBanner({ gaps, overallRisk, onViewSuggestions, compact }: ScheduleRiskBannerProps) {
   const highRiskGaps = gaps.filter(g => g.riskLevel === 'high')
   const mediumRiskGaps = gaps.filter(g => g.riskLevel === 'medium')
+  const style = riskStyles[overallRisk]
+  const Icon = style.icon
 
-  const getRiskLabel = (risk: ScheduleRiskLevel) => {
-    switch (risk) {
-      case 'high': return 'High Risk'
-      case 'medium': return 'Medium Risk'
-      default: return 'Low Risk'
-    }
-  }
-
-  const formatMinutes = (minutes: number) => {
-    if (minutes >= 60) {
-      const hours = Math.floor(minutes / 60)
-      const mins = minutes % 60
-      return `${hours}h ${mins}m`
-    }
-    return `${minutes}min`
-  }
-
-  if (compact) {
-    return (
-      <div style={{
-        background: 'var(--color-warning-muted)',
-        border: '1px solid var(--color-warning)',
-        borderRadius: 'var(--radius-md)',
-        padding: 'var(--spacing-sm) var(--spacing-md)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--spacing-sm)',
-        fontSize: '0.8rem',
-      }}>
-        <AlertTriangle size={16} style={{ color: 'var(--color-warning)' }} />
-        <span style={{ color: '#1a1a2e', fontWeight: 500 }}>
-          {highRiskGaps.length > 0 ? `${highRiskGaps.length} high-risk gap(s)` : `${mediumRiskGaps.length} medium-risk gap(s)`}
-        </span>
-        {onViewDetails && (
-          <Button variant="ghost" size="sm" onClick={onViewDetails} leftIcon={<ChevronRight size={14} />}>
-            View
-          </Button>
-        )}
-      </div>
-    )
-  }
+  if (overallRisk === 'low' && compact) return null
 
   return (
     <div style={{
-      background: 'var(--color-warning-muted)',
-      border: '1px solid var(--color-warning)',
-      borderRadius: 'var(--radius-lg)',
-      padding: 'var(--spacing-md)',
-      marginBottom: 'var(--spacing-lg)',
+      padding: compact ? 'var(--spacing-sm) var(--spacing-md)' : 'var(--spacing-md)',
+      borderRadius: 'var(--radius-md)',
+      background: style.bg,
+      border: `1px solid ${style.border}`,
+      color: style.text,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--spacing-md)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-          <AlertTriangle size={24} style={{ color: 'var(--color-warning)' }} />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '1rem' }}>Schedule Risk Detected</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              {highRiskGaps.length > 0 ? `${highRiskGaps.length} high-risk gap(s)` : ''}
-              {highRiskGaps.length > 0 && mediumRiskGaps.length > 0 && ' • '}
-              {mediumRiskGaps.length > 0 ? `${mediumRiskGaps.length} medium-risk gap(s)` : ''}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', flexWrap: 'wrap' }}>
+        <Icon size={compact ? 16 : 20} style={{ flexShrink: 0 }} />
+        
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {!compact && (
+            <div style={{ fontWeight: 600, fontSize: compact ? '0.8rem' : '0.9rem' }}>
+              Schedule Risk: {style.label}
             </div>
+          )}
+          <div style={{ fontSize: compact ? '0.75rem' : '0.85rem', opacity: 0.9 }}>
+            {overallRisk === 'high' && (
+              <>
+                <strong>{highRiskGaps.length} critical gap{highRiskGaps.length !== 1 ? 's' : ''}</strong>
+                {mediumRiskGaps.length > 0 && <span>, {mediumRiskGaps.length} medium</span>}
+                — visits may overlap or have insufficient buffer.
+              </>
+            )}
+            {overallRisk === 'medium' && (
+              <>
+                <strong>{mediumRiskGaps.length} gap{mediumRiskGaps.length !== 1 ? 's' : ''}</strong>
+                with <strong>15min buffer</strong> &mdash; tight scheduling.
+              </>
+            )}
+            {overallRisk === 'low' && (
+              <>
+                All visits have adequate buffer ({gaps.length} gap{gaps.length !== 1 ? 's' : ''} checked).
+              </>
+            )}
           </div>
         </div>
-        <Badge variant={overallRisk === 'high' ? 'error' : 'warning'} size="md">
-          {getRiskLabel(overallRisk)}
-        </Badge>
-      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-        {highRiskGaps.map(gap => (
-          <div key={gap.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-error)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-              <Badge variant="error" size="sm">High Risk</Badge>
-              <div>
-                <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>
-                  {gap.currentVisit.jobCode} → {gap.nextVisit.jobCode}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                  Buffer: {formatMinutes(gap.gapMinutes)} | Est. duration: {formatMinutes(gap.estimatedDurationMinutes)}
-                </div>
+        {!compact && highRiskGaps.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', minWidth: 200 }}>
+            {highRiskGaps.slice(0, 2).map(gap => (
+              <div key={gap.id} style={{ fontSize: '0.75rem', padding: 'var(--spacing-xs) var(--spacing-sm)', background: 'rgba(0,0,0,0.05)', borderRadius: 'var(--radius-sm)' }}>
+                <Clock size={10} style={{ display: 'inline-block', marginRight: '4px', verticalAlign: 'middle' }} />
+                {gap.currentVisit.jobCode} → {gap.nextVisit.jobCode}: <strong>{gap.gapMinutes}min</strong> buffer (need {gap.estimatedDurationMinutes + 15}min)
               </div>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => onViewDetails?.()}>
-              Details
-            </Button>
-          </div>
-        ))}
-        {mediumRiskGaps.map(gap => (
-          <div key={gap.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-warning)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-              <Badge variant="warning" size="sm">Medium Risk</Badge>
-              <div>
-                <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>
-                  {gap.currentVisit.jobCode} → {gap.nextVisit.jobCode}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                  Buffer: {formatMinutes(gap.gapMinutes)} | Est. duration: {formatMinutes(gap.estimatedDurationMinutes)}
-                </div>
+            ))}
+            {highRiskGaps.length > 2 && (
+              <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>
+                +{highRiskGaps.length - 2} more critical gap{highRiskGaps.length - 2 !== 1 ? 's' : ''}
               </div>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => onViewDetails?.()}>
-              Details
-            </Button>
+            )}
           </div>
-        ))}
-      </div>
+        )}
 
-      {onViewDetails && (
-        <Button variant="primary" size="sm" onClick={onViewDetails} leftIcon={<ChevronRight size={14} />} fullWidth style={{ marginTop: 'var(--spacing-md)' }}>
-          View All Gaps & Suggestions
-        </Button>
-      )}
+        {onViewSuggestions && (
+          <Button variant="secondary" size="sm" onClick={onViewSuggestions} leftIcon={<ChevronRight size={14} />}>
+            View Suggestions
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
