@@ -88,8 +88,9 @@ export function useDocuments(): UseDocumentsReturn {
 
   const deleteDocument = useCallback(async (id: number) => {
     if (!advisorId) throw new Error('No advisor')
+    const doc = await db.documents.get(id)
     await db.documents.delete(id)
-    await enqueueSync('documents', id, 'delete', {})
+    await enqueueSync('documents', id, 'delete', { image_path: doc?.imagePath })
     await loadDocuments()
   }, [advisorId, loadDocuments])
 

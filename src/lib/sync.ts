@@ -113,6 +113,15 @@ async function processSyncItem(item: SyncQueueItem): Promise<boolean> {
         break
       }
       case 'delete': {
+        // If it's a document, also delete the image from storage
+        if (item.entityType === 'documents' && item.payload?.image_path) {
+          const { error: storageError } = await supabase.storage
+            .from('documents')
+            .remove([item.payload.image_path])
+          if (storageError) {
+            console.warn('Failed to delete document image from storage:', storageError.message)
+          }
+        }
         const { error: deleteError } = await table
           .delete()
           .eq('id', item.entityId)
