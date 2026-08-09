@@ -124,11 +124,29 @@ UK English spelling. Be precise with job codes and quantities.`
     try {
       result = JSON.parse(ocrText)
     } catch {
-      // Non-greedy match for first complete JSON object
-      const jsonMatch = ocrText.match(/\{[\s\S]*?\}/)
-      if (jsonMatch) {
+      // Robust JSON extraction without regex backtracking
+      let braceCount = 0
+      let startIdx = -1
+      let endIdx = -1
+      
+      for (let i = 0; i < ocrText.length; i++) {
+        const char = ocrText[i]
+        if (char === '{') {
+          if (braceCount === 0) startIdx = i
+          braceCount++
+        } else if (char === '}') {
+          braceCount--
+          if (braceCount === 0 && startIdx !== -1) {
+            endIdx = i
+            break
+          }
+        }
+      }
+      
+      if (startIdx !== -1 && endIdx !== -1) {
+        const jsonStr = ocrText.slice(startIdx, endIdx + 1)
         try {
-          result = JSON.parse(jsonMatch[0])
+          result = JSON.parse(jsonStr)
         } catch {
           throw new Error('Failed to parse OCR result')
         }

@@ -47,7 +47,7 @@ export const DOCUMENT_TYPES = [
 ] as const
 export type DocumentType = typeof DOCUMENT_TYPES[number]
 
-export const DOCUMENT_STATUSES = ['uploaded', 'processing', 'parsed', 'matched', 'error'] as const
+export const DOCUMENT_STATUSES = ['uploaded', 'processing', 'parsed', 'matched', 'error', 'ocr_failed'] as const
 export type DocumentStatus = typeof DOCUMENT_STATUSES[number]
 
 export const DOCUMENT_MATCH_STATUSES = ['unmatched', 'matched', 'partial', 'failed'] as const

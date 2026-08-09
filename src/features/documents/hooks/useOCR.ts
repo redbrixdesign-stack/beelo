@@ -110,6 +110,10 @@ const EDGE_FUNCTION_MAP: Record<string, string> = {
   expense_receipt: 'ocr-expense-receipt',
 }
 
+// OCR retry configuration
+const MAX_OCR_RETRIES = 3
+const OCR_RETRY_BACKOFF_MS = 2000
+
 export function useOCR() {
   const { db, isReady } = useDexie()
   const { advisor } = useAuth()
@@ -176,10 +180,11 @@ export function useOCR() {
     
     try {
       // Get documents that need OCR (status = 'uploaded' or 'processing')
+      // Exclude documents that have permanently failed OCR (ocrRetryCount >= MAX_OCR_RETRIES)
       const pendingDocs = await db.documents
         .where('advisorId')
         .equals(advisor.id!)
-        .and(d => ['uploaded', 'processing'].includes(d.status))
+        .and(d => ['uploaded', 'processing'].includes(d.status) && (d.ocrRetryCount ?? 0) < MAX_OCR_RETRIES)
         .toArray()
 
       if (pendingDocs.length === 0) {
@@ -190,6 +195,7 @@ export function useOCR() {
       console.log(`Processing ${pendingDocs.length} documents for OCR`)
 
       for (const doc of pendingDocs) {
+        const currentRetry = doc.ocrRetryCount ?? 0
         try {
           // Upload image to Storage first if needed
           const imagePath = doc.imagePath
@@ -241,6 +247,7 @@ export function useOCR() {
           if (!edgeFunctionName) {
             await db.documents.update(doc.id!, { 
               ocrError: 'No OCR function configured for this document type',
+              ocrRetryCount: MAX_OCR_RETRIES, // prevent retry
               updatedAt: new Date(),
             })
             continue
@@ -424,11 +431,33 @@ export function useOCR() {
 
           console.log(`OCR processed document ${doc.id} (${documentType})`)
         } catch (err) {
-          console.error(`Failed to process document ${doc.id}:`, err)
-          await db.documents.update(doc.id!, {
-            ocrError: err instanceof Error ? err.message : 'Unknown OCR error',
-            updatedAt: new Date(),
-          })
+          console.error(`Failed to process document ${doc.id} (attempt ${currentRetry + 1}/${MAX_OCR_RETRIES}):`, err)
+          const nextRetry = currentRetry + 1
+          
+          if (nextRetry >= MAX_OCR_RETRIES) {
+            // Max retries exceeded - mark as permanently failed
+            await db.documents.update(doc.id!, {
+              ocrError: err instanceof Error ? err.message : 'Unknown OCR error',
+              ocrRetryCount: MAX_OCR_RETRIES,
+              status: 'ocr_failed',
+              updatedAt: new Date(),
+            })
+            console.error(`OCR failed permanently for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`)
+          } else {
+            // Schedule retry with exponential backoff
+            await db.documents.update(doc.id!, {
+              ocrError: err instanceof Error ? err.message : 'Unknown OCR error',
+              ocrRetryCount: nextRetry,
+              status: 'uploaded', // back to uploaded for retry
+              updatedAt: new Date(),
+            })
+            const delay = OCR_RETRY_BACKOFF_MS * nextRetry
+            setTimeout(() => {
+              if (!processing) {
+                processPendingDocuments()
+              }
+            }, delay)
+          }
         }
       }
 
