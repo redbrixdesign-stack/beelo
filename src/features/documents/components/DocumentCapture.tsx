@@ -5,6 +5,7 @@ import { Camera, FileText, X, Upload, Zap } from 'lucide-react'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Badge } from '@components/ui/Badge'
+import { useToast } from '@components/ui/Toast'
 
 interface DocumentCaptureProps {
   onCapture: (file: File, type?: string, subtype?: string, notes?: string) => Promise<void>
@@ -12,6 +13,7 @@ interface DocumentCaptureProps {
 }
 
 export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
+  const { showToast } = useToast()
   const [preview, setPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [detectedType, setDetectedType] = useState<string | null>(null)
@@ -41,10 +43,13 @@ export function DocumentCapture({ onCapture, disabled }: DocumentCaptureProps) {
       
       await onCapture(file, undefined, undefined, undefined)
       
+      showToast('Document saved! OCR will run when online.', 'success')
+      
       setPreview(null)
       setDetectedType(null)
     } catch (err) {
       console.error('Failed to capture document:', err)
+      showToast(`Failed to save: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error')
     } finally {
       setUploading(false)
     }

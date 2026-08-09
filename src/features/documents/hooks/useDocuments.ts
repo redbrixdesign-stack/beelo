@@ -56,22 +56,27 @@ export function useDocuments(): UseDocumentsReturn {
     if (!advisorId) throw new Error('No advisor')
     const now = new Date()
     const sourceEnv = getDefaultSourceEnv()
-    const localId = await db.documents.add({
-      ...doc,
-      advisorId,
-      sourceEnv,
-      createdAt: now,
-      updatedAt: now,
-    } as DocumentDexie)
+    try {
+      const localId = await db.documents.add({
+        ...doc,
+        advisorId,
+        sourceEnv,
+        createdAt: now,
+        updatedAt: now,
+      } as DocumentDexie)
 
-    await enqueueSync('documents', localId, 'create', {
-      ...doc,
-      advisor_id: advisorId,
-      source_env: sourceEnv,
-    })
+      await enqueueSync('documents', localId, 'create', {
+        ...doc,
+        advisor_id: advisorId,
+        source_env: sourceEnv,
+      })
 
-    await loadDocuments()
-    return localId
+      await loadDocuments()
+      return localId
+    } catch (err) {
+      console.error('Failed to create document:', err)
+      throw new Error(`Failed to save document: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
   }, [advisorId, loadDocuments])
 
   const updateDocument = useCallback(async (id: number, updates: Partial<DocumentDexie>) => {
