@@ -30,7 +30,7 @@ async function computeDorRate(supabase: any, advisorId: string, weekStart: Date)
   weekEnd.setHours(23, 59, 59, 999)
 
   // Count DOR-counting incidents in this week
-  const { data: dorIncidents, error: dorError } = await supabase
+  const { count: dorCount, error: dorError } = await supabase
     .from('incidents')
     .select('id', { count: 'exact', head: true })
     .eq('advisor_id', advisorId)
@@ -43,19 +43,8 @@ async function computeDorRate(supabase: any, advisorId: string, weekStart: Date)
     return 0
   }
 
-  const dorCount = dorIncidents || 0
-
   // Count total blinds fitted in this week (from fit_line_items with fit_status='fitted')
-  const { data: fittedBlinds, error: fitError } = await supabase
-    .from('fit_line_items')
-    .select('id', { count: 'exact', head: true })
-    .eq('advisor_id', advisorId) // This will need to be fixed - fit_line_items doesn't have advisor_id
-    .eq('fit_status', 'fitted')
-    .gte('created_at', weekStart.toISOString())
-    .lte('created_at', weekEnd.toISOString())
-
-  // Note: fit_line_items doesn't have advisor_id, need to join via documents
-  // For now, use a simpler approach - count from documents of type fit_completion_receipt
+  // fit_line_items doesn't have advisor_id, join via documents
   const { data: fitDocs, error: docError } = await supabase
     .from('documents')
     .select('id')
@@ -65,17 +54,15 @@ async function computeDorRate(supabase: any, advisorId: string, weekStart: Date)
     .lte('created_at', weekEnd.toISOString())
 
   let totalBlindsFitted = 0
-  if (!docError && fitDocs) {
+  if (!docError && fitDocs && fitDocs.length > 0) {
     const docIds = fitDocs.map((d: any) => d.id)
-    if (docIds.length > 0) {
-      const { data: fitItems, error: itemsError } = await supabase
-        .from('fit_line_items')
-        .select('id', { count: 'exact', head: true })
-        .in('document_id', docIds)
-        .eq('fit_status', 'fitted')
-      if (!itemsError) {
-        totalBlindsFitted = fitItems || 0
-      }
+    const { count: fittedCount, error: itemsError } = await supabase
+      .from('fit_line_items')
+      .select('id', { count: 'exact', head: true })
+      .in('document_id', docIds)
+      .eq('fit_status', 'fitted')
+    if (!itemsError) {
+      totalBlindsFitted = fittedCount || 0
     }
   }
 
