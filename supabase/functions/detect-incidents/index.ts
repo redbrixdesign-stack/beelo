@@ -112,6 +112,7 @@ interface VisitMatch {
   id: string
   customer_id: string
   job_code: string
+  job_source: string
 }
 
 serve(async (req) => {
@@ -170,11 +171,11 @@ serve(async (req) => {
     const findVisitByJobCode = async (jobCode: string): Promise<VisitMatch | null> => {
       const { data } = await supabase
         .from('visits')
-        .select('id, customer_id, job_code')
+        .select('id, customer_id, job_code, job_source')
         .eq('advisor_id', advisor_id)
         .eq('job_code', jobCode)
         .maybeSingle()
-      return data ? { id: data.id, customer_id: data.customer_id, job_code: data.job_code } : null
+      return data ? { id: data.id, customer_id: data.customer_id, job_code: data.job_code, job_source: data.job_source } : null
     }
 
     // 1. Commission rate cross-check (does not create penalty incidents)
@@ -194,7 +195,7 @@ serve(async (req) => {
 
       if (advError) throw new Error(`Failed to fetch advisor: ${advError.message}`)
 
-      const expectedRate = advisor.commission_rate_percent
+      const baseRate = advisor.commission_rate_percent
 
       // Compute current DOR rate for this advisor's commission week
       const commissionWeekStart = getCommissionWeekStart(new Date())
@@ -203,19 +204,21 @@ serve(async (req) => {
       for (const item of commissionItems || []) {
         // Commission rate mismatch — flag for review, NOT a penalty
         if (item.line_type === 'sale' && item.commission_rate_percent) {
+          const visitMatch = await findVisitByJobCode(item.job_code)
+          if (!visitMatch) {
+            unmatched.push({ job_code: item.job_code, reason: 'No visit found for commission rate cross-check' })
+            continue
+          }
+          // Per BusinessRules.md: company_assigned jobs pay rate minus 2pp
+          const expectedRate = visitMatch.job_source === 'company_assigned' ? baseRate - 2 : baseRate
           const rateDiff = Math.abs(item.commission_rate_percent - expectedRate)
           if (rateDiff > COMMISSION_RATE_TOLERANCE) {
-            const visitMatch = await findVisitByJobCode(item.job_code)
-            if (!visitMatch) {
-              unmatched.push({ job_code: item.job_code, reason: 'No visit found for commission rate cross-check' })
-              continue
-            }
             incidents.push({
               advisor_id,
               visit_id: visitMatch.id,
               customer_id: visitMatch.customer_id,
               type: 'other',
-              cause: 'supplier_error', // rate set by company, not advisor
+              cause: 'unknown', // cause not established; could be OCR error, wrong job_source, or calculation bug
               cause_detail: `Commission rate mismatch: expected ${expectedRate}%, got ${item.commission_rate_percent}% (diff: ${rateDiff.toFixed(1)}%)`,
               counts_toward_dor: false,
               discovered_at: new Date().toISOString(),
