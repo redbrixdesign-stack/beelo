@@ -76,6 +76,7 @@ Return ONLY valid JSON with this exact structure:
       "vatAmount": number or null
     }
   ],
+  "additionalNotes": "string or null",
   "confidence": 0.0-1.0,
   "modelVersion": "claude-3-haiku-20240307",
   "promptVersion": "expense-receipt-ocr-v1"
@@ -88,6 +89,7 @@ Extraction rules:
 - vatAmount: VAT amount if shown separately
 - category: one of: fuel, parking, materials, tools, subsistence, accommodation, training, insurance, phone, software, other
 - items: individual line items if visible
+- additionalNotes: ANY text visible on the receipt that doesn't fit the structured fields above — payment method, card last 4 digits, loyalty points, staff name, till number, promotional messages, return policy, VAT number, address, phone, website, etc. Capture verbatim. Use null if none.
 - confidence: your confidence in extraction accuracy (0.0-1.0)
 
 UK receipts typically show: Merchant name, Date, VAT registration number, Items with prices, Subtotal, VAT, Total.
@@ -138,6 +140,7 @@ Be precise with financial figures.`
         amount: typeof item.amount === 'number' ? item.amount : 0,
         vatAmount: typeof item.vatAmount === 'number' ? item.vatAmount : null,
       })) : [],
+      additionalNotes: typeof result.additionalNotes === 'string' && result.additionalNotes.trim() ? result.additionalNotes.trim() : null,
       confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
       modelVersion: result.modelVersion || 'claude-3-haiku-20240307',
       promptVersion: result.promptVersion || 'expense-receipt-ocr-v1',

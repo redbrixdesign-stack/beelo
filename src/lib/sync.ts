@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
-import { db, type SyncQueueItem, getDefaultSourceEnv } from './dexie'
+import { db, type SyncQueueItem, getDefaultSourceEnv, type AdvisorDexie } from './dexie'
+import { transformKeysToSnakeCase } from './dexie'
 
 const SYNC_BATCH_SIZE = 50
 const MAX_RETRIES = 3
@@ -51,25 +52,54 @@ export async function getSyncQueueItems(): Promise<SyncQueueItem[]> {
   return db.syncQueue.where('status').anyOf('pending', 'syncing', 'failed').toArray()
 }
 
+function transformPayloadForSupabase(payload: Record<string, unknown>, advisor: AdvisorDexie | null, isCreate: boolean): Record<string, unknown> {
+  const transformed = transformKeysToSnakeCase(payload)
+  
+  if (isCreate && transformed.id !== undefined) {
+    delete transformed.id
+  }
+  
+  if (advisor && transformed.advisor_id !== undefined) {
+    transformed.advisor_id = advisor.authUserId
+  }
+  
+  for (const [key, value] of Object.entries(transformed)) {
+    if (value instanceof Date) {
+      transformed[key] = value.toISOString()
+    }
+  }
+  
+  return transformed
+}
+
+async function getAdvisorForSync(): Promise<AdvisorDexie | null> {
+  const advisors = await db.advisors.toArray()
+  return advisors[0] ?? null
+}
+
 async function processSyncItem(item: SyncQueueItem): Promise<boolean> {
   const table = supabase.from(item.entityType)
+  const advisor = await getAdvisorForSync()
+  const isCreate = item.operation === 'create'
   
   try {
     await db.syncQueue.update(item.id!, { status: 'syncing' })
     
     let error: { message: string } | null = null
     
+    const transformedPayload = transformPayloadForSupabase(item.payload, advisor, isCreate)
+    
     switch (item.operation) {
       case 'create': {
         const { error: createError } = await table.insert({
-          ...item.payload,
+          ...transformedPayload,
           source_env: getDefaultSourceEnv()
         })
         error = createError
         break
       }
       case 'update': {
-        const { id, ...updates } = item.payload
+        const { id, ...updates } = transformedPayload
         const { error: updateError } = await table
           .update({ ...updates, updated_at: new Date().toISOString() })
           .eq('id', id)

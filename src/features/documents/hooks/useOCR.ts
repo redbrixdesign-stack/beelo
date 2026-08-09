@@ -19,6 +19,7 @@ interface OCRResult {
     unitPrice?: number
     lineTotal?: number
   }>
+  additionalNotes?: string | null
   confidence: number
   modelVersion: string
   promptVersion: string
@@ -32,12 +33,14 @@ interface CommissionOCRResult {
     customerNumber?: string
     customerName?: string
     lineType?: 'sale' | 'service' | 'dor_penalty' | 'refit' | 'adjustment'
+    lineTypeRaw?: string
     commissionRatePercent?: number
     orderValueIncVat?: number
     orderValueExcVat?: number
     amountIncVat?: number
     amountExcVat?: number
   }>
+  additionalNotes?: string | null
   confidence: number
   modelVersion: string
   promptVersion: string
@@ -52,6 +55,7 @@ interface FitOCRResult {
     fitStatus: 'fitted' | 'replacement'
     refitDate?: string
   }>
+  additionalNotes?: string | null
   confidence: number
   modelVersion: string
   promptVersion: string
@@ -67,6 +71,8 @@ interface DeliveryOCRResult {
     quantity: number
     status: 'delivered' | 'pending' | 'damaged' | 'returned'
   }>
+  fanOutTargets: string[]
+  additionalNotes?: string | null
   confidence: number
   modelVersion: string
   promptVersion: string
@@ -83,6 +89,7 @@ interface ExpenseOCRResult {
     amount: number
     vatAmount?: number
   }>
+  additionalNotes?: string | null
   confidence: number
   modelVersion: string
   promptVersion: string
@@ -92,6 +99,7 @@ interface ClassifyResult {
   documentType: string
   confidence: number
   reasoning: string
+  additionalNotes?: string | null
 }
 
 const EDGE_FUNCTION_MAP: Record<string, string> = {
@@ -207,9 +215,9 @@ export function useOCR() {
             await db.documents.update(doc.id!, { imagePath: storagePath })
           }
 
-          // Classify document type if not already set or if generic
+          // Classify document type if not already set (truly unclassified)
           let documentType = doc.type
-          const needsClassification = !doc.type || doc.type === 'quote_or_receipt' // default type
+          const needsClassification = !doc.type // only classify if type is genuinely unknown
           
           if (needsClassification) {
             await db.documents.update(doc.id!, { status: 'classifying', updatedAt: new Date() })
@@ -219,6 +227,7 @@ export function useOCR() {
               documentType = classification.documentType
               await db.documents.update(doc.id!, { 
                 type: documentType as any,
+                additionalNotes: classification.additionalNotes,
                 status: 'uploaded',
                 updatedAt: new Date(),
               })
@@ -246,6 +255,7 @@ export function useOCR() {
             
             await db.documents.update(doc.id!, {
               parsedJson: { lineItems: quoteResult.lineItems },
+              additionalNotes: quoteResult.additionalNotes,
               status: 'parsed',
               modelVersion: quoteResult.modelVersion,
               promptVersion: quoteResult.promptVersion,
@@ -279,6 +289,7 @@ export function useOCR() {
             
             await db.documents.update(doc.id!, {
               parsedJson: { lineItems: commissionResult.lineItems },
+              additionalNotes: commissionResult.additionalNotes,
               status: 'parsed',
               modelVersion: commissionResult.modelVersion,
               promptVersion: commissionResult.promptVersion,
@@ -296,6 +307,7 @@ export function useOCR() {
                 customerNumber: lineItem.customerNumber,
                 customerName: lineItem.customerName,
                 lineType: lineItem.lineType,
+                lineTypeRaw: lineItem.lineTypeRaw,
                 commissionRatePercent: lineItem.commissionRatePercent,
                 orderValueIncVat: lineItem.orderValueIncVat,
                 orderValueExcVat: lineItem.orderValueExcVat,
@@ -314,6 +326,7 @@ export function useOCR() {
             
             await db.documents.update(doc.id!, {
               parsedJson: { lineItems: fitResult.lineItems },
+              additionalNotes: fitResult.additionalNotes,
               status: 'parsed',
               modelVersion: fitResult.modelVersion,
               promptVersion: fitResult.promptVersion,
@@ -347,8 +360,10 @@ export function useOCR() {
                 jobCode: deliveryResult.jobCode,
                 customerNumber: deliveryResult.customerNumber,
                 deliveryDate: deliveryResult.deliveryDate,
-                items: deliveryResult.items 
+                items: deliveryResult.items,
+                fanOutTargets: deliveryResult.fanOutTargets
               },
+              additionalNotes: deliveryResult.additionalNotes,
               status: 'parsed',
               modelVersion: deliveryResult.modelVersion,
               promptVersion: deliveryResult.promptVersion,
@@ -357,12 +372,28 @@ export function useOCR() {
               updatedAt: new Date(),
             })
 
-            // TODO: Add deliveryDropNoteLineItems table if needed
+            // Persist structured line items for delivery drop note (fan-out matching)
+            for (const lineItem of deliveryResult.items) {
+              await db.deliveryDropNoteLineItems.add({
+                deliveryDropNoteId: doc.id!,
+                lineNumber: lineItem.lineNumber,
+                description: lineItem.description,
+                quantity: lineItem.quantity,
+                status: lineItem.status,
+                sourceEnv: (import.meta.env.VITE_SOURCE_ENV as 'demo' | 'qa' | 'live') || 'live',
+                modelVersion: deliveryResult.modelVersion,
+                promptVersion: deliveryResult.promptVersion,
+                confidence: deliveryResult.confidence,
+                extractedAt: new Date(),
+                createdAt: new Date(),
+              })
+            }
           } else if (documentType === 'expense_receipt') {
             const expenseResult = result as ExpenseOCRResult
             
             await db.documents.update(doc.id!, {
               parsedJson: expenseResult,
+              additionalNotes: expenseResult.additionalNotes,
               status: 'parsed',
               modelVersion: expenseResult.modelVersion,
               promptVersion: expenseResult.promptVersion,
@@ -371,7 +402,21 @@ export function useOCR() {
               updatedAt: new Date(),
             })
 
-            // TODO: Add expenseLineItems table if needed
+            // Persist structured line items for expense receipt
+            for (const lineItem of expenseResult.items) {
+              await db.expenseLineItems.add({
+                expenseId: doc.id!,
+                description: lineItem.description,
+                amount: lineItem.amount,
+                vatAmount: lineItem.vatAmount,
+                sourceEnv: (import.meta.env.VITE_SOURCE_ENV as 'demo' | 'qa' | 'live') || 'live',
+                modelVersion: expenseResult.modelVersion,
+                promptVersion: expenseResult.promptVersion,
+                confidence: expenseResult.confidence,
+                extractedAt: new Date(),
+                createdAt: new Date(),
+              })
+            }
           }
 
           console.log(`OCR processed document ${doc.id} (${documentType})`)

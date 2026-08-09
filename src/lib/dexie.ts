@@ -241,6 +241,7 @@ export interface CommissionLineItemDexie {
   customerNumber?: string
   customerName?: string
   lineType?: CommissionLineType
+  lineTypeRaw?: string
   commissionRatePercent?: number
   orderValueIncVat?: number
   orderValueExcVat?: number
@@ -311,6 +312,37 @@ export interface DeliveryDropNoteDexie {
   extractedAt?: Date
   createdAt: Date
   updatedAt: Date
+}
+
+export interface DeliveryDropNoteLineItemDexie {
+  id?: number
+  deliveryDropNoteId: number
+  lineNumber: number
+  description: string
+  quantity: number
+  status: DeliveryItemStatus
+  sourceEnv: SourceEnv
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  extractedAt?: Date
+  createdAt: Date
+}
+
+export interface ExpenseLineItemDexie {
+  id?: number
+  expenseId: number
+  description: string
+  amount: number
+  vatAmount?: number
+  sourceEnv: SourceEnv
+  // AI provenance fields
+  modelVersion?: string
+  promptVersion?: string
+  confidence?: number
+  extractedAt?: Date
+  createdAt: Date
 }
 
 export interface SettingDexie {
@@ -445,6 +477,8 @@ export class BeeloDB extends Dexie {
   trips!: Table<TripDexie>
   expenses!: Table<ExpenseDexie>
   deliveryDropNotes!: Table<DeliveryDropNoteDexie>
+  deliveryDropNoteLineItems!: Table<DeliveryDropNoteLineItemDexie>
+  expenseLineItems!: Table<ExpenseLineItemDexie>
   settings!: Table<SettingDexie>
   dorPredictions!: Table<DORPredictionDexie>
   onboardingState!: Table<OnboardingStateDexie>
@@ -454,8 +488,34 @@ export class BeeloDB extends Dexie {
   measurementChecks!: Table<MeasurementCheckDexie>
   syncQueue!: Table<SyncQueueItem>
 
-  constructor() {
+constructor() {
     super('BeeloDB')
+    this.version(2).stores({
+      advisors: '++id, authUserId, businessName, employmentModel, baseLocation, workingPreferences, commissionRatePercent, vatAdjustmentPercent, taxReservePercent, installOnlyMinutesPerBlind, fullJobMinutesPerBlind, weeklyEarningsTarget, hmrcMileageRateTier1, hmrcMileageRateTier2, hmrcMileageThresholdMiles, consentStatus, sourceEnv, createdAt, updatedAt, [authUserId]',
+      customers: '++id, advisorId, customerNumber, phone, postcode, address, displayName, contactPreferences, history, status, sourceEnv, createdAt, updatedAt, [advisorId+customerNumber], [advisorId]',
+      visits: '++id, advisorId, customerId, customerNumber, appointmentNumber, jobCode, orderNumber, appointmentType, jobSource, dateTime, timeSlotStart, timeSlotEnd, status, contactedCustomer, blindCount, preVisitNotes, companyScheduledDurationMinutes, estimatedDurationMinutes, location, sourceDocumentId, sourceEnv, outcome, outcomeValue, discountPercent, commissionAmount, notes, createdAt, updatedAt, [advisorId+jobCode], [advisorId+dateTime], [advisorId]',
+      leads: '++id, advisorId, name, phone, landedAt, status, contactAttemptsCount, source, sourceEnv, createdAt, updatedAt, [advisorId]',
+      callAttempts: '++id, leadId, initiatedAt, outcome, voiceNoteId, sourceEnv, createdAt, [leadId]',
+      voiceNotes: '++id, advisorId, audioPath, recordedAt, durationSeconds, triggerMethod, status, transcript, extractedBlindCount, extractedParkingNotes, extractedAccessNotes, extractedNameSpoken, linkedAppointmentScreenshotDocumentId, matchedVisitId, matchedCustomerId, matchMethod, leadId, sourceEnv, createdAt, updatedAt, [advisorId+status], [advisorId]',
+      documents: '++id, advisorId, type, subtype, imagePath, parsedJson, status, matchStatus, sourceEnv, additionalNotes, modelVersion, promptVersion, confidence, extractedAt, createdAt, updatedAt, [advisorId+type], [advisorId+status], [advisorId]',
+      fitLineItems: '++id, documentId, jobCode, lineNumber, room, position, fitStatus, refitDate, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [documentId], [jobCode]',
+      incidents: '++id, advisorId, visitId, customerId, type, cause, causeDetail, countsTowardDor, discoveredAt, description, resolutionStatus, photos, notes, commissionLineItemId, logisticsLeg, originalFitVisitId, withinWarrantyPeriod, serviceCallOutcome, dorRateAtTimePercent, penaltyTier, blindsAffectedCount, penaltyAmount, saleValueLost, clientAgreedToRemake, remakeMaterialCost, remakeLabourAbsorbed, sourceEnv, modelVersion, promptVersion, confidence, sourceDocumentId, fitLineItemId, detectedAt, crossCheckStatus, commissionRateExpected, commissionRateActual, createdAt, updatedAt, [advisorId], [visitId]',
+      quoteLineItems: '++id, documentId, room, position, description, range, colour, widthMm, quantity, unitPrice, lineTotal, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [documentId]',
+      commissionLineItems: '++id, commissionStatementDocumentId, lineDate, invoiceNumber, jobCode, customerNumber, customerName, lineType, lineTypeRaw, commissionRatePercent, orderValueIncVat, orderValueExcVat, amountIncVat, amountExcVat, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [commissionStatementDocumentId], [jobCode]',
+      trips: '++id, advisorId, visitId, startedAt, endedAt, distanceMiles, pathPoints, status, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',
+      expenses: '++id, advisorId, merchant, date, amount, vatAmount, category, photoPath, sourceDocumentId, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, updatedAt, [advisorId+date], [advisorId]',
+      deliveryDropNotes: '++id, advisorId, documentId, jobCode, customerNumber, deliveryDate, items, fanOutTargets, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, updatedAt, [advisorId+deliveryDate], [advisorId]',
+      deliveryDropNoteLineItems: '++id, deliveryDropNoteId, lineNumber, description, quantity, status, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [deliveryDropNoteId]',
+      expenseLineItems: '++id, expenseId, description, amount, vatAmount, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [expenseId]',
+      settings: '++id, advisorId, key, value, sourceEnv, createdAt, updatedAt, [advisorId+key]',
+      dorPredictions: '++id, advisorId, weekStart, weekEnd, predictedDORRate, currentDORRate, blindsAtRisk, estimatedPenalty, confidence, modelVersion, promptVersion, generatedAt, sourceEnv, createdAt, updatedAt, [advisorId+weekStart], [advisorId]',
+      onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, sourceEnv, createdAt, updatedAt, [advisorId]',
+      pilotMetrics: '++id, advisorId, date, metricName, metricValue, metadata, sourceEnv, createdAt, [advisorId+date], [advisorId]',
+      messageDrafts: '++id, advisorId, relatedType, relatedId, draftText, status, sourceEnv, createdAt, updatedAt, [advisorId]',
+      scheduleSuggestions: '++id, advisorId, date, suggestionText, affectedVisitIds, estimatedSavingMiles, estimatedSavingMinutes, scheduleRiskFlag, status, sourceEnv, createdAt, updatedAt, [advisorId+date], [advisorId]',
+      measurementChecks: '++id, advisorId, visitId, windowId, blindType, fitMethod, widthTopCm, widthMiddleCm, widthBottomCm, workingWidthCm, dropLeftCm, dropMiddleCm, dropRightCm, workingDropCm, diagonalTlBrCm, diagonalTrBlCm, diagonalDiffCm, toleranceCm, isSquare, passesTolerance, notes, photos, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',
+      syncQueue: '++id, entityType, entityId, operation, payload, status, retryCount, lastError, createdAt, [entityType+entityId], [status]'
+    })
     this.version(1).stores({
       advisors: '++id, authUserId, businessName, employmentModel, baseLocation, workingPreferences, commissionRatePercent, vatAdjustmentPercent, taxReservePercent, installOnlyMinutesPerBlind, fullJobMinutesPerBlind, weeklyEarningsTarget, hmrcMileageRateTier1, hmrcMileageRateTier2, hmrcMileageThresholdMiles, consentStatus, sourceEnv, createdAt, updatedAt, [authUserId]',
       customers: '++id, advisorId, customerNumber, phone, postcode, address, displayName, contactPreferences, history, status, sourceEnv, createdAt, updatedAt, [advisorId+customerNumber], [advisorId]',
@@ -471,6 +531,8 @@ export class BeeloDB extends Dexie {
       trips: '++id, advisorId, visitId, startedAt, endedAt, distanceMiles, pathPoints, status, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',
       expenses: '++id, advisorId, merchant, date, amount, vatAmount, category, photoPath, sourceDocumentId, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, updatedAt, [advisorId+date], [advisorId]',
       deliveryDropNotes: '++id, advisorId, documentId, jobCode, customerNumber, deliveryDate, items, fanOutTargets, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, updatedAt, [advisorId+deliveryDate], [advisorId]',
+      deliveryDropNoteLineItems: '++id, deliveryDropNoteId, lineNumber, description, quantity, status, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [deliveryDropNoteId]',
+      expenseLineItems: '++id, expenseId, description, amount, vatAmount, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [expenseId]',
       settings: '++id, advisorId, key, value, sourceEnv, createdAt, updatedAt, [advisorId+key]',
       dorPredictions: '++id, advisorId, weekStart, weekEnd, predictedDORRate, currentDORRate, blindsAtRisk, estimatedPenalty, confidence, modelVersion, promptVersion, generatedAt, sourceEnv, createdAt, updatedAt, [advisorId+weekStart], [advisorId]',
       onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, sourceEnv, createdAt, updatedAt, [advisorId]',
@@ -480,7 +542,6 @@ export class BeeloDB extends Dexie {
       measurementChecks: '++id, advisorId, visitId, windowId, blindType, fitMethod, widthTopCm, widthMiddleCm, widthBottomCm, workingWidthCm, dropLeftCm, dropMiddleCm, dropRightCm, workingDropCm, diagonalTlBrCm, diagonalTrBlCm, diagonalDiffCm, toleranceCm, isSquare, passesTolerance, notes, photos, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',
       syncQueue: '++id, entityType, entityId, operation, payload, status, retryCount, lastError, createdAt, [entityType+entityId], [status]'
     })
-
   }
 }
 

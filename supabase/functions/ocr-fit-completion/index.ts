@@ -69,6 +69,7 @@ Return ONLY valid JSON with this exact structure:
       "refitDate": "ISO date string or null"
     }
   ],
+  "additionalNotes": "string or null",
   "confidence": 0.0-1.0,
   "modelVersion": "claude-3-haiku-20240307",
   "promptVersion": "fit-completion-ocr-v1"
@@ -82,6 +83,7 @@ Extraction rules:
 - position: window position if mentioned (e.g. "Left", "Right", "Bay", "Patio Doors")
 - fitStatus: "fitted" (new installation) or "replacement" (replacing existing)
 - refitDate: date of refit if this is a replacement (ISO format YYYY-MM-DD)
+- additionalNotes: ANY text visible on the receipt that doesn't fit the structured fields above — installer signature/name, customer signature, special instructions, access notes, parking info, warranty references, quality check marks, handover notes, etc. Capture verbatim. Use null if none.
 - confidence: your confidence in extraction accuracy (0.0-1.0)
 
 Fit completion receipts typically show: Job Code, Window/Blind details, Room, Position, Fitted/Replacement status, Refit date if applicable.
@@ -129,6 +131,7 @@ Be precise with job codes and line numbers.`
         fitStatus: ['fitted', 'replacement'].includes(item.fitStatus) ? item.fitStatus : 'fitted',
         refitDate: item.refitDate || null,
       })) : [],
+      additionalNotes: typeof result.additionalNotes === 'string' && result.additionalNotes.trim() ? result.additionalNotes.trim() : null,
       confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
       modelVersion: result.modelVersion || 'claude-3-haiku-20240307',
       promptVersion: result.promptVersion || 'fit-completion-ocr-v1',

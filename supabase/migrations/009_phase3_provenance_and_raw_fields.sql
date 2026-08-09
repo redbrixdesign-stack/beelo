@@ -4,6 +4,18 @@
 -- needed for automatic cause determination in detect-incidents
 
 -- ============================================
+-- 0. Add updated_at to line item tables (required for triggers below)
+-- ============================================
+ALTER TABLE quote_line_items
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE commission_line_items
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE fit_line_items
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- ============================================
 -- 1. Documents table - provenance fields
 -- ============================================
 ALTER TABLE documents
@@ -17,7 +29,7 @@ ALTER TABLE documents
 ALTER TABLE commission_line_items
   ADD COLUMN IF NOT EXISTS line_type_raw TEXT;  -- e.g. 'Mismeasure', 'Wrong Colour', 'Wrong Order'
 
-CREATE INDEX IF NOT EXISTS idx_commission_line_items_line_type_raw 
+CREATE INDEX IF NOT EXISTS idx_commission_line_items_line_type_raw
   ON commission_line_items(line_type_raw);
 
 -- ============================================

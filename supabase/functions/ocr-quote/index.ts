@@ -74,6 +74,7 @@ Return ONLY valid JSON with this exact structure:
       "lineTotal": number or null
     }
   ],
+  "additionalNotes": "string or null",
   "confidence": 0.0-1.0,
   "modelVersion": "claude-3-haiku-20240307",
   "promptVersion": "quote-ocr-v1"
@@ -90,6 +91,7 @@ Extraction rules:
 - quantity: count of blinds (default 1 if not clear)
 - unitPrice: price per unit in GBP (extract numbers, handle £ symbol)
 - lineTotal: total for this line (quantity × unitPrice)
+- additionalNotes: ANY text visible on the document that doesn't fit the structured fields above — handwritten notes, special instructions, payment terms, delivery info, customer requests, installer names, phone numbers, email addresses, promotional text, disclaimers, etc. Capture verbatim. Use null if none.
 - confidence: your confidence in extraction accuracy (0.0-1.0)
 
 UK English spelling. Be precise with numbers. If a field is not visible, use null.`
@@ -140,6 +142,7 @@ UK English spelling. Be precise with numbers. If a field is not visible, use nul
         unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : null,
         lineTotal: typeof item.lineTotal === 'number' ? item.lineTotal : null,
       })) : [],
+      additionalNotes: typeof result.additionalNotes === 'string' && result.additionalNotes.trim() ? result.additionalNotes.trim() : null,
       confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
       modelVersion: result.modelVersion || 'claude-3-haiku-20240307',
       promptVersion: result.promptVersion || 'quote-ocr-v1',

@@ -75,6 +75,7 @@ Return ONLY valid JSON with this exact structure:
       "amountExcVat": number or null
     }
   ],
+  "additionalNotes": "string or null",
   "confidence": 0.0-1.0,
   "modelVersion": "claude-3-haiku-20240307",
   "promptVersion": "commission-ocr-v2"
@@ -94,6 +95,7 @@ Extraction rules:
 - orderValueExcVat: order value excluding VAT in GBP
 - amountIncVat: commission amount including VAT in GBP
 - amountExcVat: commission amount excluding VAT in GBP
+- additionalNotes: ANY text visible on the statement that doesn't fit the structured fields above — period totals, adjustments explanations, memo lines, footnotes, payment references, advisor notes, company messages, etc. Capture verbatim. Use null if none.
 - confidence: your confidence in extraction accuracy (0.0-1.0)
 
 UK commission statements typically show: Date, Invoice, Job Code, Customer, Type, Rate%, Order Value, Commission Amount.
@@ -149,6 +151,7 @@ Be precise with financial figures. CRITICAL: Capture the exact reason text for D
         amountIncVat: typeof item.amountIncVat === 'number' ? item.amountIncVat : null,
         amountExcVat: typeof item.amountExcVat === 'number' ? item.amountExcVat : null,
       })) : [],
+      additionalNotes: typeof result.additionalNotes === 'string' && result.additionalNotes.trim() ? result.additionalNotes.trim() : null,
       confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
       modelVersion: result.modelVersion || 'claude-3-haiku-20240307',
       promptVersion: result.promptVersion || 'commission-ocr-v2',

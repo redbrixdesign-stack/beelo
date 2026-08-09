@@ -73,7 +73,8 @@ Return ONLY valid JSON:
 {
   "documentType": "appointment_card|quote_or_receipt|fit_completion_receipt|delivery_drop_note|commission_statement|expense_receipt|dor_receipt",
   "confidence": 0.0-1.0,
-  "reasoning": "brief explanation"
+  "reasoning": "brief explanation",
+  "additionalNotes": "string or null"
 }
 
 Document types:
@@ -85,7 +86,8 @@ Document types:
 - expense_receipt: Standard receipt with merchant, date, total, VAT, items
 - dor_receipt: Defective Order Receipt / penalty notification
 
-Look for key visual markers: headers, table structures, specific labels (Job Code, Order Number, Commission Rate, etc.).`
+Look for key visual markers: headers, table structures, specific labels (Job Code, Order Number, Commission Rate, etc.).
+additionalNotes: ANY text visible that doesn't fit the classification — handwritten marks, stamps, stickers, damage, unusual formatting, etc. Use null if none.`
             },
             {
               type: 'image',
@@ -120,13 +122,14 @@ Look for key visual markers: headers, table structures, specific labels (Job Cod
       }
     }
 
-    const documentType = DOCUMENT_TYPES.includes(result.documentType as DocumentType) 
-      ? result.documentType 
+const documentType = DOCUMENT_TYPES.includes(result.documentType as DocumentType)
+      ? result.documentType
       : 'quote_or_receipt'
     const confidence = typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5
+    const additionalNotes = typeof result.additionalNotes === 'string' && result.additionalNotes.trim() ? result.additionalNotes.trim() : null
 
     return new Response(
-      JSON.stringify({ documentType, confidence, reasoning: result.reasoning }),
+      JSON.stringify({ documentType, confidence, reasoning: result.reasoning, additionalNotes }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 

@@ -12,7 +12,79 @@ const corsHeaders = {
 
 // Business rules from BusinessRules.md
 const COMMISSION_RATE_TOLERANCE = 0.5 // 0.5% tolerance
-const DOR_RATE_THRESHOLD = 2.5 // 2.5% DOR rate threshold
+
+// Helper: compute current commission week start (Monday) for a given date
+function getCommissionWeekStart(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay() // 0 = Sunday, 1 = Monday, ...
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // adjust to Monday
+  d.setDate(diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+// Helper: compute DOR rate for advisor for a given commission week
+async function computeDorRate(supabase: any, advisorId: string, weekStart: Date): Promise<number> {
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 6)
+  weekEnd.setHours(23, 59, 59, 999)
+
+  // Count DOR-counting incidents in this week
+  const { data: dorIncidents, error: dorError } = await supabase
+    .from('incidents')
+    .select('id', { count: 'exact', head: true })
+    .eq('advisor_id', advisorId)
+    .eq('counts_toward_dor', true)
+    .gte('discovered_at', weekStart.toISOString())
+    .lte('discovered_at', weekEnd.toISOString())
+
+  if (dorError) {
+    console.warn('Failed to fetch DOR incidents:', dorError.message)
+    return 0
+  }
+
+  const dorCount = dorIncidents || 0
+
+  // Count total blinds fitted in this week (from fit_line_items with fit_status='fitted')
+  const { data: fittedBlinds, error: fitError } = await supabase
+    .from('fit_line_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('advisor_id', advisorId) // This will need to be fixed - fit_line_items doesn't have advisor_id
+    .eq('fit_status', 'fitted')
+    .gte('created_at', weekStart.toISOString())
+    .lte('created_at', weekEnd.toISOString())
+
+  // Note: fit_line_items doesn't have advisor_id, need to join via documents
+  // For now, use a simpler approach - count from documents of type fit_completion_receipt
+  const { data: fitDocs, error: docError } = await supabase
+    .from('documents')
+    .select('id')
+    .eq('advisor_id', advisorId)
+    .eq('type', 'fit_completion_receipt')
+    .gte('created_at', weekStart.toISOString())
+    .lte('created_at', weekEnd.toISOString())
+
+  let totalBlindsFitted = 0
+  if (!docError && fitDocs) {
+    const docIds = fitDocs.map((d: any) => d.id)
+    if (docIds.length > 0) {
+      const { data: fitItems, error: itemsError } = await supabase
+        .from('fit_line_items')
+        .select('id', { count: 'exact', head: true })
+        .in('document_id', docIds)
+        .eq('fit_status', 'fitted')
+      if (!itemsError) {
+        totalBlindsFitted = fitItems || 0
+      }
+    }
+  }
+
+  if (totalBlindsFitted === 0) {
+    return 0
+  }
+
+  return Math.round((dorCount / totalBlindsFitted) * 100 * 100) / 100 // 2 decimal places
+}
 
 // BusinessRules.md: DOR reason from commission statement maps to incident type
 // Only 'Mismeasure'/'Wrong Colour'/'Wrong Order' → fitter_error (advisor penalty)
@@ -124,7 +196,6 @@ serve(async (req) => {
         .from('commission_line_items')
         .select('*')
         .eq('commission_statement_document_id', commission_statement_document_id)
-        .eq('advisor_id', advisor_id)
 
       if (commError) throw new Error(`Failed to fetch commission items: ${commError.message}`)
 
@@ -137,6 +208,10 @@ serve(async (req) => {
       if (advError) throw new Error(`Failed to fetch advisor: ${advError.message}`)
 
       const expectedRate = advisor.commission_rate_percent
+
+      // Compute current DOR rate for this advisor's commission week
+      const commissionWeekStart = getCommissionWeekStart(new Date())
+      const currentDorRate = await computeDorRate(supabase, advisor_id, commissionWeekStart)
 
       for (const item of commissionItems || []) {
         // Commission rate mismatch — flag for review, NOT a penalty
@@ -203,7 +278,7 @@ serve(async (req) => {
             commission_line_item_id: item.id,
             source_env: 'live',
             penalty_amount: item.amount_inc_vat,
-            dor_rate_at_time_percent: DOR_RATE_THRESHOLD,
+            dor_rate_at_time_percent: currentDorRate,
           })
         }
       }
@@ -215,7 +290,6 @@ serve(async (req) => {
         .from('fit_line_items')
         .select('*')
         .eq('document_id', fit_completion_document_id)
-        .eq('advisor_id', advisor_id)
 
       if (fitError) throw new Error(`Failed to fetch fit items: ${fitError.message}`)
 
@@ -226,11 +300,12 @@ serve(async (req) => {
             unmatched.push({ job_code: item.job_code, reason: 'No visit found for fit completion replacement' })
             continue
           }
+
           incidents.push({
             advisor_id,
             visit_id: visitMatch.id,
             customer_id: visitMatch.customer_id,
-            type: 'mismeasurement', // provisional; will be refined when commission statement confirms
+            type: 'other', // PROVISIONAL: actual type determined when commission statement confirms cause from line_type_raw
             cause: 'unknown', // DEFAULT: unknown. BusinessRules.md: only fitter_error counts toward DOR.
             cause_detail: `Refit required for job ${item.job_code} (line ${item.line_number}). Refit date: ${item.refit_date}. Awaiting commission statement confirmation.`,
             counts_toward_dor: false, // DEFAULT: false. Only true if cause confirmed as fitter_error.
@@ -239,7 +314,8 @@ serve(async (req) => {
             resolution_status: 'open',
             photos: [],
             original_fit_visit_id: visitMatch.id, // link to original fit visit
-            within_warranty_period: true,
+            // within_warranty_period: deliberately omitted — same-day refit at initial fitting is not a warranty case; warranty malfunctions are discovered on service calls months/years later (separate trigger, not implemented)
+            service_call_outcome: null,
             source_env: 'live',
             fit_line_item_id: item.id,
           })

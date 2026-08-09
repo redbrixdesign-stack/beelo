@@ -116,55 +116,10 @@ CREATE INDEX idx_pilot_metrics_advisor_id_date ON pilot_metrics(advisor_id, date
 CREATE INDEX idx_pilot_metrics_advisor_id ON pilot_metrics(advisor_id);
 
 -- ============================================
--- Message Drafts (Phase 2/4)
--- ============================================
-CREATE TABLE message_drafts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    advisor_id UUID NOT NULL REFERENCES advisors(id) ON DELETE CASCADE,
-    related_type TEXT NOT NULL,
-    related_id UUID NOT NULL,
-    draft_text TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'discarded')),
-    source_env TEXT NOT NULL DEFAULT 'live' CHECK (source_env IN ('demo', 'qa', 'live')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-ALTER TABLE message_drafts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "message_draft_isolation" ON message_drafts FOR ALL 
-    USING (advisor_id IN (SELECT id FROM advisors WHERE auth_user_id = auth.uid()));
-CREATE INDEX idx_message_drafts_advisor_id ON message_drafts(advisor_id);
-
--- ============================================
--- Schedule Suggestions (Phase 4)
--- ============================================
-CREATE TABLE schedule_suggestions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    advisor_id UUID NOT NULL REFERENCES advisors(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    suggestion_text TEXT NOT NULL,
-    affected_visit_ids UUID[] NOT NULL DEFAULT '{}',
-    estimated_saving_miles NUMERIC(8,2),
-    estimated_saving_minutes INTEGER,
-    schedule_risk_flag BOOLEAN NOT NULL DEFAULT FALSE,
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'dismissed')),
-    source_env TEXT NOT NULL DEFAULT 'live' CHECK (source_env IN ('demo', 'qa', 'live')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-ALTER TABLE schedule_suggestions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "schedule_suggestion_isolation" ON schedule_suggestions FOR ALL 
-    USING (advisor_id IN (SELECT id FROM advisors WHERE auth_user_id = auth.uid()));
-CREATE INDEX idx_schedule_suggestions_advisor_id ON schedule_suggestions(advisor_id);
-CREATE INDEX idx_schedule_suggestions_date ON schedule_suggestions(advisor_id, date);
-
--- ============================================
 -- Updated at triggers for new tables
 -- ============================================
 CREATE TRIGGER update_delivery_drop_notes_updated_at BEFORE UPDATE ON delivery_drop_notes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_dor_predictions_updated_at BEFORE UPDATE ON dor_predictions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_onboarding_state_updated_at BEFORE UPDATE ON onboarding_state FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_message_drafts_updated_at BEFORE UPDATE ON message_drafts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_schedule_suggestions_updated_at BEFORE UPDATE ON schedule_suggestions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_pilot_metrics_updated_at BEFORE UPDATE ON pilot_metrics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

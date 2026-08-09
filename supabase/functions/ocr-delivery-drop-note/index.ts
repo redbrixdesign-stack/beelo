@@ -71,6 +71,7 @@ Return ONLY valid JSON with this exact structure:
     }
   ],
   "fanOutTargets": ["customer", "fitter", "office"],
+  "additionalNotes": "string or null",
   "confidence": 0.0-1.0,
   "modelVersion": "claude-3-haiku-20240307",
   "promptVersion": "delivery-drop-note-ocr-v1"
@@ -86,6 +87,7 @@ Extraction rules:
 - quantity: number of units
 - status: "delivered" (default), "pending", "damaged", "returned"
 - fanOutTargets: who needs this info - always include ["customer", "fitter", "office"] for delivery notes
+- additionalNotes: ANY text visible on the delivery note that doesn't fit the structured fields above — driver signature, recipient signature, delivery instructions, access codes, contact numbers, damage notes, partial delivery notes, return reasons, depot stamps, etc. Capture verbatim. Use null if none.
 - confidence: your confidence in extraction accuracy (0.0-1.0)
 
 UK English spelling. Be precise with job codes and quantities.`
@@ -134,6 +136,7 @@ UK English spelling. Be precise with job codes and quantities.`
         status: ['delivered', 'pending', 'damaged', 'returned'].includes(item.status) ? item.status : 'delivered',
       })) : [],
       fanOutTargets: Array.isArray(result.fanOutTargets) ? result.fanOutTargets : ['customer', 'fitter', 'office'],
+      additionalNotes: typeof result.additionalNotes === 'string' && result.additionalNotes.trim() ? result.additionalNotes.trim() : null,
       confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
       modelVersion: result.modelVersion || 'claude-3-haiku-20240307',
       promptVersion: result.promptVersion || 'delivery-drop-note-ocr-v1',
