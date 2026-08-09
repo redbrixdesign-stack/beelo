@@ -1,320 +1,343 @@
-// OnboardingFlow - Multi-step onboarding flow
+// OnboardingFlow - 6-step onboarding flow
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Layout } from '@components/layout/Layout'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Input } from '@components/ui/Input'
-import { Select } from '@components/ui/Select'
-import { CheckCircle, ChevronRight, ChevronLeft, User, Shield, Mic, Camera, MapPin, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Badge } from '@components/ui/Badge'
+import { CheckCircle, ChevronRight, ChevronLeft, User, Shield, Bell, Camera, Mic, Database, Sparkles } from 'lucide-react'
 import { useOnboarding } from '../hooks/useOnboarding'
-import { ONBOARDING_STEPS, OnboardingStep } from '@lib/constants'
+import { useAuth } from '@hooks/useAuth'
+import { useDexie } from '@hooks/useDexie'
+import { enqueueSync } from '@lib/sync'
+import { getDefaultSourceEnv } from '@lib/dexie'
 
-const STEP_CONFIG: Record<OnboardingStep, { title: string; description: string; icon: any }> = {
-  welcome: { title: 'Welcome to Beelo', description: 'Your hands-free operational memory for blinds advisors', icon: CheckCircle2 },
-  profile: { title: 'Your Profile', description: 'Set up your advisor details and commission settings', icon: User },
-  permissions: { title: 'Permissions', description: 'Enable microphone and camera for voice/photo capture', icon: Shield },
-  environment: { title: 'Environment', description: 'Select your environment (Demo/QA/Live)', icon: AlertCircle },
-  tutorial: { title: 'Quick Tutorial', description: 'Learn the key gestures and voice commands', icon: CheckCircle2 },
-  complete: { title: 'All Set!', description: 'You\'re ready to start capturing jobs hands-free', icon: CheckCircle2 },
-}
+const STEPS = [
+  { id: 'welcome', label: 'Welcome', icon: Sparkles },
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'permissions', label: 'Permissions', icon: Shield },
+  { id: 'environment', label: 'Environment', icon: Database },
+  { id: 'tutorial', label: 'Tutorial', icon: Camera },
+  { id: 'complete', label: 'Complete', icon: CheckCircle },
+] as const
 
-const STEP_ORDER: OnboardingStep[] = ['welcome', 'profile', 'permissions', 'environment', 'tutorial', 'complete']
+type StepId = typeof STEPS[number]['id']
 
 export function OnboardingFlow() {
-  const { 
-    currentStep, 
-    currentStepIndex, 
-    stepOrder, 
-    completeStep, 
-    goToStep, 
-    resetOnboarding, 
-    isComplete,
-    canProceed 
-  } = useOnboarding()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const { db, isReady } = useDexie()
+  const { onboardingState, setStep, completeStep, skipStep, completeOnboarding } = useOnboarding()
+  const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [formData, setFormData] = useState({
+    businessName: '',
+    commissionRate: 15.25,
+    fullJobMinutesPerBlind: 33,
+    sourceEnv: 'live' as const,
+  })
 
-  const config = STEP_CONFIG[currentStep]
+  useEffect(() => {
+    if (onboardingState) {
+      setCurrentStepIndex(STEPS.findIndex(s => s.id === onboardingState.currentStep) || 0)
+    }
+  }, [onboardingState])
 
-  if (isComplete) {
-    return (
-      <Layout title="Onboarding Complete">
-        <Card padding="xl" style={{ textAlign: 'center', maxWidth: '400px', margin: 'var(--spacing-xl) auto' }}>
-          <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            borderRadius: '50%', 
-            background: 'var(--color-success)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            color: 'white',
-            margin: '0 auto var(--spacing-lg)'
-          }}>
-            <CheckCircle2 size={40} />
-          </div>
-          <h2 style={{ margin: '0 0 var(--spacing-sm)', fontSize: '1.5rem' }}>You're all set!</h2>
-          <p style={{ margin: '0 0 var(--spacing-lg)', color: 'var(--color-text-muted)' }}>
-            Beelo is ready to help you capture jobs hands-free.
-          </p>
-          <Button variant="primary" size="lg" onClick={() => window.location.href = '/'} fullWidth>
-            Go to Dashboard
-          </Button>
-        </Card>
-      </Layout>
-    )
+  const handleNext = async () => {
+    const currentStep = STEPS[currentStepIndex]
+    
+    // Save step-specific data
+    if (currentStep.id === 'profile') {
+      await saveProfile()
+    }
+
+    await completeStep(currentStep.id)
+    const nextIndex = Math.min(currentStepIndex + 1, STEPS.length - 1)
+    setCurrentStepIndex(nextIndex)
+    await setStep(STEPS[nextIndex].id)
   }
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 'welcome':
-        return (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ 
-              width: '100px', 
-              height: '100px', 
-              borderRadius: '50%', 
-              background: 'var(--color-primary-muted)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              color: 'var(--color-primary)',
-              margin: '0 auto var(--spacing-lg)'
-            }}>
-              <CheckCircle2 size={48} />
-            </div>
-            <h3 style={{ margin: '0 0 var(--spacing-sm)', fontSize: '1.25rem' }}>Welcome to Beelo</h3>
-            <p style={{ margin: '0 0 var(--spacing-lg)', color: 'var(--color-text-muted)' }}>
-              Your hands-free operational memory for blinds advisors. 
-              Capture jobs, protect your pay, protect your schedule — all hands-free.
-            </p>
-            <div style={{ textAlign: 'left', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 2 }}>
-              <div>✓ Voice capture via Siri/Google Assistant</div>
-              <div>✓ OCR for quotes, receipts, commission statements</div>
-              <div>✓ DOR detection & schedule risk warnings</div>
-              <div>✓ Offline-first, works on-site</div>
-            </div>
-          </div>
-        )
+  const handleBack = () => {
+    const prevIndex = Math.max(currentStepIndex - 1, 0)
+    setCurrentStepIndex(prevIndex)
+    setStep(STEPS[prevIndex].id)
+  }
 
-      case 'profile':
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-            <Input
-              label="Business Name"
-              placeholder="e.g. John's Blinds"
-              autoFocus
-            />
-            <Input
-              label="Base Location"
-              placeholder="e.g. Manchester, UK"
-            />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
+  const handleSkip = async () => {
+    const currentStep = STEPS[currentStepIndex]
+    await skipStep(currentStep.id)
+    const nextIndex = Math.min(currentStepIndex + 1, STEPS.length - 1)
+    setCurrentStepIndex(nextIndex)
+    await setStep(STEPS[nextIndex].id)
+  }
+
+  const saveProfile = async () => {
+    if (!user || !isReady) return
+    const advisorId = parseInt(user.id)
+    const now = new Date()
+    const sourceEnv = getDefaultSourceEnv()
+
+    await db.advisors.update(advisorId, {
+      businessName: formData.businessName,
+      commissionRatePercent: formData.commissionRate,
+      fullJobMinutesPerBlind: formData.fullJobMinutesPerBlind,
+      sourceEnv: formData.sourceEnv,
+      updatedAt: now,
+    })
+
+    await enqueueSync('advisors', advisorId, 'update', {
+      business_name: formData.businessName,
+      commission_rate_percent: formData.commissionRate,
+      full_job_minutes_per_blind: formData.fullJobMinutesPerBlind,
+      source_env: formData.sourceEnv,
+    })
+  }
+
+  const handleFinish = async () => {
+    await completeOnboarding()
+    navigate('/')
+  }
+
+  const currentStep = STEPS[currentStepIndex]
+  const progress = ((currentStepIndex + 1) / STEPS.length) * 100
+
+  return (
+    <Layout title="Setup" showBack={false}>
+      <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+        {/* Progress */}
+        <div style={{ marginBottom: 'var(--spacing-lg)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)' }}>
+            {STEPS.map((step, i) => (
+              <div key={step.id} style={{ flex: 1, textAlign: 'center', position: 'relative' }}>
+                <div style={{
+                  width: '32px', height: '32px', borderRadius: '50%', margin: '0 auto var(--spacing-xs)',
+                  background: i < currentStepIndex ? 'var(--color-primary)' : i === currentStepIndex ? 'var(--color-primary)' : 'var(--color-border)',
+                  color: i <= currentStepIndex ? 'white' : 'var(--color-text-muted)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.8rem',
+                  border: i === currentStepIndex ? '3px solid var(--color-primary)' : 'none',
+                }}>
+                  {i < currentStepIndex ? <CheckCircle size={16} /> : <step.icon size={16} />}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: i <= currentStepIndex ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: i <= currentStepIndex ? 600 : 400 }}>
+                  {step.label}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ height: '4px', background: 'var(--color-border)', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--color-primary)', transition: 'width 0.3s' }} />
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <Card padding="xl" style={{ minHeight: '300px' }}>
+          {currentStep.id === 'welcome' && (
+            <div style={{ textAlign: 'center' }}>
+              <Sparkles size={64} style={{ color: 'var(--color-primary)', marginBottom: 'var(--spacing-lg)' }} />
+              <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1.5rem' }}>Welcome to Beelo</h2>
+              <p style={{ color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: 'var(--spacing-lg)' }}>
+                Your offline-first, voice-first operational memory for home-visit sales.
+                We'll set up your profile, permissions, and walk through the key features.
+              </p>
+              <div style={{ textAlign: 'left', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 2 }}>
+                <div>✓ Voice capture — hands-free, offline</div>
+                <div>✓ Document OCR — quotes, commissions, fit receipts</div>
+                <div>✓ DOR protection — catch penalties automatically</div>
+                <div>✓ Schedule risk — never miss a buffer</div>
+                <div>✓ Mileage tracking — HMRC rates built in</div>
+              </div>
+            </div>
+          )}
+
+          {currentStep.id === 'profile' && (
+            <div>
+              <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1.25rem' }}>Your Profile</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)' }}>
+                This appears on quotes and helps identify your jobs.
+              </p>
+              <Input
+                label="Business Name"
+                value={formData.businessName}
+                onChange={e => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
+                placeholder="e.g. Smith Blinds"
+              />
               <Input
                 label="Commission Rate (%)"
                 type="number"
                 step="0.01"
-                placeholder="15.25"
+                min="0"
+                max="100"
+                value={formData.commissionRate}
+                onChange={e => setFormData(prev => ({ ...prev, commissionRate: parseFloat(e.target.value) || 0 }))}
+                style={{ marginTop: 'var(--spacing-md)' }}
               />
               <Input
-                label="VAT Adjustment (%)"
+                label="Full Job Minutes per Blind"
                 type="number"
-                step="0.1"
-                placeholder="20"
+                min="1"
+                value={formData.fullJobMinutesPerBlind}
+                onChange={e => setFormData(prev => ({ ...prev, fullJobMinutesPerBlind: parseInt(e.target.value) || 33 }))}
+                style={{ marginTop: 'var(--spacing-md)' }}
               />
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 'var(--spacing-sm)' }}>
+                Default 33 min (install + prep + cleanup). Adjust based on your experience.
+              </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
-              <Input
-                label="Install Only (min/blind)"
-                type="number"
-                placeholder="17"
-              />
-              <Input
-                label="Full Job (min/blind)"
-                type="number"
-                placeholder="33"
-              />
-            </div>
-          </div>
-        )
+          )}
 
-      case 'permissions':
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-primary-muted)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-                <Mic size={24} />
-              </div>
-              <div>
-                <strong>Microphone</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Required for voice capture</div>
+          {currentStep.id === 'permissions' && (
+            <div style={{ textAlign: 'center' }}>
+              <Shield size={64} style={{ color: 'var(--color-primary)', marginBottom: 'var(--spacing-lg)' }} />
+              <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1.25rem' }}>Permissions Needed</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)', lineHeight: 1.6 }}>
+                Beelo needs a few permissions to work properly. You can change these later in settings.
+              </p>
+              <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <input type="checkbox" defaultChecked disabled />
+                  <div>
+                    <div style={{ fontWeight: 500 }}>Microphone</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Voice capture & transcription</div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <input type="checkbox" defaultChecked disabled />
+                  <div>
+                    <div style={{ fontWeight: 500 }}>Camera</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Document OCR & receipt capture</div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <input type="checkbox" defaultChecked disabled />
+                  <div>
+                    <div style={{ fontWeight: 500 }}>Location</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Mileage tracking & schedule risk</div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <input type="checkbox" defaultChecked disabled />
+                  <div>
+                    <div style={{ fontWeight: 500 }}>Notifications</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Downtime prompts & sync status</div>
+                  </div>
+                </label>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-primary-muted)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-                <Camera size={24} />
-              </div>
-              <div>
-                <strong>Camera</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Required for document/photo capture</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-primary-muted)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-                <MapPin size={24} />
-              </div>
-              <div>
-                <strong>Location</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Required for mileage tracking</div>
-              </div>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              You can change these in device settings later. All data stays on your device until synced.
-            </p>
-          </div>
-        )
+          )}
 
-      case 'environment':
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-            <p style={{ color: 'var(--color-text-muted)' }}>Select your environment. This affects which backend you sync with.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--spacing-md)' }}>
-              <button style={{ padding: 'var(--spacing-md)', border: '2px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', cursor: 'pointer' }}>
-                <div style={{ fontWeight: 600 }}>Demo</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Development testing</div>
-              </button>
-              <button style={{ padding: 'var(--spacing-md)', border: '2px solid var(--color-warning)', borderRadius: 'var(--radius-md)', background: 'var(--color-warning-muted)', cursor: 'pointer' }}>
-                <div style={{ fontWeight: 600 }}>QA</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Quality assurance</div>
-              </button>
-              <button style={{ padding: 'var(--spacing-md)', border: '2px solid var(--color-success)', borderRadius: 'var(--radius-md)', background: 'var(--color-success-muted)', cursor: 'pointer' }}>
-                <div style={{ fontWeight: 600 }}>Live</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Production</div>
-              </button>
-            </div>
-          </div>
-        )
-
-      case 'tutorial':
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-primary-muted)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-                <Mic size={24} />
-              </div>
-              <div>
-                <strong>"Hey Siri, log call"</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Opens voice capture instantly</div>
+          {currentStep.id === 'environment' && (
+            <div>
+              <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1.25rem' }}>Environment</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)' }}>
+                Choose your environment. This affects which data you see and where it syncs.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+                {['live', 'qa', 'demo'].map(env => (
+                  <label key={env} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', border: `2px solid ${formData.sourceEnv === env ? 'var(--color-primary)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
+                    <input type="radio" name="sourceEnv" value={env} checked={formData.sourceEnv === env} onChange={e => setFormData(prev => ({ ...prev, sourceEnv: e.target.value as any }))} />
+                    <div>
+                      <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{env}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {env === 'live' && 'Production data — real jobs, real money'}
+                        {env === 'qa' && 'Quality assurance — test with staging data'}
+                        {env === 'demo' && 'Demo mode — sample data for exploration'}
+                      </div>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-primary-muted)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-                <Camera size={24} />
-              </div>
-              <div>
-                <strong>Tap camera for documents</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Quotes, receipts, delivery notes</div>
+          )}
+
+          {currentStep.id === 'tutorial' && (
+            <div style={{ textAlign: 'center' }}>
+              <Camera size={64} style={{ color: 'var(--color-primary)', marginBottom: 'var(--spacing-lg)' }} />
+              <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1.25rem' }}>Quick Tour</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)' }}>
+                Here's how to use the key features:
+              </p>
+              <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <Mic size={24} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Voice Capture</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Tap the mic button or say "Hey Siri, log call" — records offline, transcribes when online</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <Camera size={24} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Document OCR</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Photo a quote, commission statement, or fit receipt — auto-detects type, extracts line items</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <Shield size={24} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>DOR Protection</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Commission statements scanned for penalties — only fitter_error counts toward your DOR%</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <Sparkles size={24} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Schedule Risk</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Enter blind count → auto-calculates duration → warns if next visit too tight</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-primary-muted)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-                <Mic size={24} />
+          )}
+
+          {currentStep.id === 'complete' && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--color-success-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--spacing-lg)' }}>
+                <CheckCircle size={40} style={{ color: 'var(--color-success)' }} />
               </div>
-              <div>
-                <strong>Downtime batch review</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Match voice notes during gaps</div>
+              <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1.5rem' }}>All Set!</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)' }}>
+                Your Beelo is ready. Start by capturing a voice note or photographing a document.
+              </p>
+              <div style={{ textAlign: 'left', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 2, maxWidth: '300px', margin: '0 auto var(--spacing-lg)' }}>
+                <div>🎤 <strong>Voice:</strong> Tap mic or use Siri/Google shortcut</div>
+                <div>📷 <strong>Documents:</strong> Tap "Capture Document" from Documents tab</div>
+                <div>📅 <strong>Schedule:</strong> Add visits with blind count for risk check</div>
+                <div>🛡️ <strong>DOR:</strong> Photo commission statements weekly</div>
               </div>
             </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              All actions work offline. Data syncs automatically when you're back online.
-            </p>
-          </div>
-        )
+          )}
+        </Card>
 
-      case 'complete':
-        return (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ 
-              width: '80px', 
-              height: '80px', 
-              borderRadius: '50%', 
-              background: 'var(--color-success)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              color: 'white',
-              margin: '0 auto var(--spacing-lg)'
-            }}>
-              <CheckCircle2 size={40} />
-            </div>
-            <h3 style={{ margin: '0 0 var(--spacing-sm)', fontSize: '1.25rem' }}>You're ready!</h3>
-            <p style={{ margin: '0 0 var(--spacing-lg)', color: 'var(--color-text-muted)' }}>
-              Beelo is configured and ready to help you on-site.
-            </p>
-          </div>
-        )
-
-      default:
-        return null
-    }
-  }
-
-  return (
-    <Layout title={config.title}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-        {/* Progress indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
-          {stepOrder.map((step, index) => (
-            <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', flex: 1 }}>
-              <div style={{ 
-                width: index === currentStepIndex ? '24px' : '20px', 
-                height: index === currentStepIndex ? '24px' : '20px', 
-                borderRadius: '50%', 
-                background: index <= currentStepIndex ? 'var(--color-primary)' : 'var(--color-border)',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                color: index <= currentStepIndex ? 'white' : 'transparent',
-                transition: 'all var(--transition-normal)'
-              }}>
-                {index < currentStepIndex && <CheckCircle2 size={12} />}
-                {index === currentStepIndex && <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{index + 1}</span>}
-                {index > currentStepIndex && <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{index + 1}</span>}
-              </div>
-              {index < stepOrder.length - 1 && <div style={{ flex: 1, height: '2px', background: index < currentStepIndex ? 'var(--color-primary)' : 'var(--color-border)' }} />}
-            ))}
-          </div>
-
-          <Card padding="lg" style={{ flex: 1 }}>
-            <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-              <h2 style={{ margin: '0 0 var(--spacing-xs)', fontSize: '1.25rem', fontWeight: 600 }}>{config.title}</h2>
-              <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>{config.description}</p>
-            </div>
-
-            {renderStepContent()}
-
-            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-lg)', paddingTop: 'var(--spacing-md)', borderTop: '1px solid var(--color-border)' }}>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => goToStep(stepOrder[currentStepIndex - 1])}
-                disabled={currentStepIndex === 0}
-                leftIcon={<ChevronLeft size={16} />}
-              >
-                Back
+        {/* Navigation */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--spacing-lg)' }}>
+          <Button 
+            variant={currentStepIndex === 0 ? 'ghost' : 'secondary'} 
+            onClick={handleBack} 
+            disabled={currentStepIndex === 0}
+            leftIcon={<ChevronLeft size={16} />}
+          >
+            Back
+          </Button>
+          <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+            {currentStepIndex < STEPS.length - 1 && (
+              <>
+                <Button variant="ghost" onClick={handleSkip}>
+                  Skip
+                </Button>
+                <Button variant="primary" onClick={handleNext} rightIcon={<ChevronRight size={16} />}>
+                  Next
+                </Button>
+              </>
+            )}
+            {currentStepIndex === STEPS.length - 1 && (
+              <Button variant="primary" onClick={handleFinish} size="lg">
+                Start Using Beelo
               </Button>
-              <div style={{ flex: 1 }} />
-              <Button 
-                variant={currentStep === 'complete' ? 'primary' : 'primary'} 
-                size="sm" 
-                onClick={() => currentStep !== 'complete' ? completeStep(stepOrder[currentStepIndex]) : window.location.href = '/'}
-                rightIcon={<ChevronRight size={16} />}
-              >
-                {currentStep === 'complete' ? 'Get Started' : currentStep === 'welcome' ? 'Get Started' : 'Continue'}
-              </Button>
-            </div>
-          </Card>
+            )}
+          </div>
         </div>
-      </Layout>
-    )
+      </div>
+    </Layout>
   )
 }

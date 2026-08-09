@@ -3,127 +3,129 @@
 import { useState, useEffect, useCallback } from 'react'
 import { db } from '@lib/dexie'
 import { useAuth } from '@hooks/useAuth'
-import type { OnboardingStateDexie, OnboardingStep } from '@lib/dexie'
+import { enqueueSync } from '@lib/sync'
+import { getDefaultSourceEnv } from '@lib/dexie'
+import type { OnboardingStateDexie } from '@lib/dexie'
 
-const STEP_ORDER: OnboardingStep[] = ['welcome', 'profile', 'permissions', 'environment', 'tutorial', 'complete']
+const STEPS = ['welcome', 'profile', 'permissions', 'environment', 'tutorial', 'complete'] as const
+type StepId = typeof STEPS[number]
+
+interface OnboardingState {
+  currentStep: StepId
+  completedSteps: StepId[]
+  skippedSteps: StepId[]
+}
 
 export function useOnboarding() {
   const { user } = useAuth()
-  const [state, setState] = useState<OnboardingStateDexie | null>(null)
-  const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [onboardingState, setOnboardingState] = useState<OnboardingState | null>(null)
   const [loading, setLoading] = useState(true)
 
   const advisorId = user?.id ? parseInt(user.id) : 0
 
-  const loadState = useCallback(async () => {
+  const loadOnboardingState = useCallback(async () => {
     if (!advisorId) return
     setLoading(true)
     try {
-      const existing = await db.onboardingState.where('advisorId').equals(advisorId).first()
-      if (existing) {
-        setState(existing)
-        setCurrentStepIndex(STEP_ORDER.indexOf(existing.currentStep as any))
+      const record = await db.onboardingState.where('advisorId').equals(advisorId).first()
+      if (record) {
+        setOnboardingState({
+          currentStep: record.currentStep,
+          completedSteps: record.completedSteps,
+          skippedSteps: record.skippedSteps,
+        })
       } else {
-        // Create initial state
-        const now = new Date()
-        await db.onboardingState.add({
-          advisorId,
-          currentStep: 0,
+        // First time - create initial state
+        const initialState: OnboardingState = {
+          currentStep: 'welcome',
           completedSteps: [],
           skippedSteps: [],
-          sourceEnv: (import.meta.env.VITE_SOURCE_ENV as any) || 'live',
-          createdAt: now,
-          updatedAt: now,
-        })
-        setCurrentStepIndex(0)
+        }
+        setOnboardingState(initialState)
+        await saveOnboardingState(initialState)
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('Failed to load onboarding state:', err)
     } finally {
       setLoading(false)
     }
   }, [advisorId])
 
-  const completeStep = useCallback(async (step: OnboardingStep, skipped = false) => {
-    if (!advisorId || !state) return
-    try {
-      const stepIndex = STEP_ORDER.indexOf(step)
-      const newCompleted = skipped ? state.skippedSteps : [...state.completedSteps, stepIndex]
-      const nextIndex = Math.min(stepIndex + 1, STEP_ORDER.length - 1)
+  const saveOnboardingState = useCallback(async (state: OnboardingState) => {
+    if (!advisorId) return
+    const now = new Date()
+    const sourceEnv = getDefaultSourceEnv()
 
-      await db.onboardingState.update(state.id!, {
-        currentStep: nextIndex,
-        completedSteps: newCompleted,
-        skippedSteps: skipped ? [...state.skippedSteps, stepIndex] : state.skippedSteps,
-        updatedAt: new Date(),
-      })
+    await db.onboardingState.put({
+      advisorId,
+      currentStep: state.currentStep,
+      completedSteps: state.completedSteps,
+      skippedSteps: state.skippedSteps,
+      sourceEnv,
+      updatedAt: now,
+    } as OnboardingStateDexie)
 
-      setState(prev => prev ? {
-        ...prev,
-        currentStep: nextIndex,
-        completedSteps: newCompleted,
-        skippedSteps: skipped ? [...prev.skippedSteps, stepIndex] : prev.skippedSteps,
-      } : null)
-      setCurrentStepIndex(nextIndex)
-    } catch {
-      // ignore
+    await enqueueSync('onboardingState', advisorId, 'upsert', {
+      advisor_id: advisorId,
+      current_step: state.currentStep,
+      completed_steps: state.completedSteps,
+      skipped_steps: state.skippedSteps,
+      source_env: sourceEnv,
+    })
+  }, [advisorId])
+
+  const setStep = useCallback(async (step: StepId) => {
+    if (!onboardingState) return
+    const newState = { ...onboardingState, currentStep: step }
+    setOnboardingState(newState)
+    await saveOnboardingState(newState)
+  }, [onboardingState, saveOnboardingState])
+
+  const completeStep = useCallback(async (step: StepId) => {
+    if (!onboardingState) return
+    if (!onboardingState.completedSteps.includes(step)) {
+      const newState = {
+        ...onboardingState,
+        completedSteps: [...onboardingState.completedSteps, step],
+      }
+      setOnboardingState(newState)
+      await saveOnboardingState(newState)
     }
-  }, [advisorId, state])
+  }, [onboardingState, saveOnboardingState])
 
-  const goToStep = useCallback((step: OnboardingStep) => {
-    const index = STEP_ORDER.indexOf(step)
-    if (index >= 0 && index <= currentStepIndex + 1) {
-      setCurrentStepIndex(index)
+  const skipStep = useCallback(async (step: StepId) => {
+    if (!onboardingState) return
+    if (!onboardingState.skippedSteps.includes(step)) {
+      const newState = {
+        ...onboardingState,
+        skippedSteps: [...onboardingState.skippedSteps, step],
+      }
+      setOnboardingState(newState)
+      await saveOnboardingState(newState)
     }
-  }, [currentStepIndex])
+  }, [onboardingState, saveOnboardingState])
 
-  const resetOnboarding = useCallback(async () => {
-    if (!advisorId || !state) return
-    try {
-      await db.onboardingState.update(state.id!, {
-        currentStep: 0,
-        completedSteps: [],
-        skippedSteps: [],
-        updatedAt: new Date(),
-      })
-      setCurrentStepIndex(0)
-      setState(prev => prev ? { ...prev, currentStep: 0, completedSteps: [], skippedSteps: [] } : null)
-    } catch {
-      // ignore
+  const completeOnboarding = useCallback(async () => {
+    if (!onboardingState) return
+    const newState = {
+      ...onboardingState,
+      currentStep: 'complete' as StepId,
+      completedSteps: [...onboardingState.completedSteps, 'complete'],
     }
-  }, [advisorId, state])
-
-  const isStepComplete = useCallback((step: OnboardingStep) => {
-    if (!state) return false
-    return state.completedSteps.includes(STEP_ORDER.indexOf(step))
-  }, [state])
-
-  const isStepSkipped = useCallback((step: OnboardingStep) => {
-    if (!state) return false
-    return state.skippedSteps.includes(STEP_ORDER.indexOf(step))
-  }, [state])
-
-  const canProceed = useCallback((step: OnboardingStep) => {
-    const index = STEP_ORDER.indexOf(step)
-    return index <= currentStepIndex
-  }, [currentStepIndex])
+    setOnboardingState(newState)
+    await saveOnboardingState(newState)
+  }, [onboardingState, saveOnboardingState])
 
   useEffect(() => {
-    loadState()
-  }, [loadState])
+    loadOnboardingState()
+  }, [loadOnboardingState])
 
   return {
-    state,
-    currentStep: STEP_ORDER[currentStepIndex],
-    currentStepIndex,
-    stepOrder: STEP_ORDER,
+    onboardingState,
     loading,
+    setStep,
     completeStep,
-    goToStep,
-    resetOnboarding,
-    isStepComplete,
-    isStepSkipped,
-    canProceed,
-    isComplete: currentStepIndex === STEP_ORDER.length - 1,
+    skipStep,
+    completeOnboarding,
   }
 }

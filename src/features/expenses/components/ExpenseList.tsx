@@ -1,132 +1,158 @@
-// ExpenseList - List component for expenses
+// ExpenseList - List of expenses with filters
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clock, ChevronRight, Filter, AlertCircle, CheckCircle, Receipt, Trash2, Edit } from 'lucide-react'
 import { Card } from '@components/ui/Card'
-import { Badge } from '@components/ui/Badge'
 import { Button } from '@components/ui/Button'
+import { Badge } from '@components/ui/Badge'
 import { Input } from '@components/ui/Input'
 import { Select } from '@components/ui/Select'
+import { Plus, Calendar, Filter, ChevronRight, CreditCard, DollarSign } from 'lucide-react'
 import { useExpenses } from '../hooks/useExpenses'
 import { EXPENSE_CATEGORIES, ExpenseCategory } from '@lib/constants'
+import type { ExpenseDexie } from '@lib/dexie'
 
-export function ExpenseList() {
+interface ExpenseListProps {
+  onNew: () => void
+  dateRange?: { start: Date; end: Date }
+}
+
+export function ExpenseList({ onNew, dateRange }: ExpenseListProps) {
   const navigate = useNavigate()
-  const { expenses, loading, loadExpenses } = useExpenses()
-  const [search, setSearch] = useState('')
+  const { expenses, loading, loadExpenses, getExpensesByDateRange, deleteExpense } = useExpenses()
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | 'all'>('all')
+  const [search, setSearch] = useState('')
 
-  const filteredExpenses = expenses.filter(expense => {
+  useEffect(() => {
+    if (dateRange) {
+      getExpensesByDateRange(dateRange.start, dateRange.end).then(setExpenses)
+    } else {
+      loadExpenses()
+    }
+  }, [dateRange, loadExpenses, getExpensesByDateRange])
+
+  const filteredExpenses = expenses.filter(exp => {
     const matchesSearch = !search || 
-      expense.merchant?.toLowerCase().includes(search.toLowerCase()) ||
-      expense.category?.toLowerCase().includes(search.toLowerCase())
-    const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter
+      exp.merchant?.toLowerCase().includes(search.toLowerCase()) ||
+      exp.category?.toLowerCase().includes(search.toLowerCase())
+    const matchesCategory = categoryFilter === 'all' || exp.category === categoryFilter
     return matchesSearch && matchesCategory
   })
 
-  const getCategoryBadge = (category?: ExpenseCategory) => {
-    if (!category) return null
-    return <Badge variant="info" size="sm">{category}</Badge>
+  const categoryLabels: Record<ExpenseCategory, string> = {
+    fuel: 'Fuel', parking: 'Parking', materials: 'Materials',
+    tools: 'Tools', subsistence: 'Subsistence', accommodation: 'Accommodation',
+    training: 'Training', insurance: 'Insurance', phone: 'Phone',
+    software: 'Software', other: 'Other',
   }
 
-  const formatDate = (dateStr: string | Date) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const getCategoryIcon = (cat: ExpenseCategory) => {
+    const icons: Record<ExpenseCategory, typeof CreditCard | typeof Calendar> = {
+      fuel: CreditCard, parking: Calendar, materials: CreditCard,
+      tools: CreditCard, subsistence: CreditCard, accommodation: CreditCard,
+      training: CreditCard, insurance: CreditCard, phone: CreditCard,
+      software: CreditCard, other: CreditCard,
+    }
+    return icons[cat] || CreditCard
   }
 
-  const formatAmount = (amount: number) => {
-    return `£${amount.toFixed(2)}`
-  }
-
-  const handleExpenseClick = (expense: any) => {
-    navigate(`/expenses/${expense.id}`)
-  }
-
-  const handleDelete = async (e: React.MouseEvent, expense: any) => {
-    e.stopPropagation()
-    if (!confirm('Delete this expense? This cannot be undone.')) return
-    // Note: deleteExpense not in hook, would need to add
+  const handleDelete = async (id: number) => {
+    if (!confirm('Delete this expense?')) return
+    await deleteExpense(id)
   }
 
   if (loading) {
     return <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Loading...</div>
   }
 
+  const total = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)
+  const vatTotal = filteredExpenses.reduce((sum, e) => sum + (e.vatAmount || 0), 0)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Expenses</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Expenses ({filteredExpenses.length})</h3>
+          <div style={{ display: 'flex', gap: 'var(--spacing-lg)', fontSize: '0.85rem' }}>
+            <span><DollarSign size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Total: £{total.toFixed(2)}</span>
+            <span><DollarSign size={14} style={{ verticalAlign: 'middle', marginRight: 4, color: 'var(--color-success)' }} /> VAT: £{vatTotal.toFixed(2)}</span>
+          </div>
+        </div>
+        <Button variant="secondary" onClick={onNew} leftIcon={<Plus size={16} />}>
+          Add Expense
+        </Button>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
-        <Input
-          placeholder="Search merchant or category..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          leftIcon={<Filter size={18} />}
-          style={{ flex: 1, minWidth: '200px' }}
-        />
-        <Select
-          value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value as ExpenseCategory | 'all')}
-          options={['all', ...EXPENSE_CATEGORIES].map(c => ({ value: c, label: c === 'all' ? 'All Categories' : c.charAt(0).toUpperCase() + c.slice(1) }))}
-          style={{ minWidth: '150px' }}
-        />
-      </div>
+      <Card padding="md">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md)', alignItems: 'center' }}>
+          <Input
+            placeholder="Search merchant..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            leftIcon={<CreditCard size={18} />}
+            style={{ flex: 1, minWidth: '200px' }}
+          />
+          <Select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value as ExpenseCategory | 'all')}
+            options={['all', ...EXPENSE_CATEGORIES].map(c => ({ value: c, label: c === 'all' ? 'All Categories' : categoryLabels[c] }))}
+            style={{ minWidth: '160px' }}
+          />
+        </div>
+      </Card>
 
       {filteredExpenses.length === 0 ? (
         <Card padding="xl" style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          {expenses.length === 0 ? 'No expenses yet. Use "Capture Expense" to add one.' : 'No expenses match your filters.'}
+          <CreditCard size={48} style={{ marginBottom: 'var(--spacing-md)', opacity: 0.5 }} />
+          <p>No expenses found</p>
         </Card>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-          {filteredExpenses.map(expense => (
-            <Card
-              key={expense.id}
-              onClick={() => handleExpenseClick(expense)}
-              hoverable
-              padding="md"
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}
-            >
-              <div style={{ 
-                width: '60px', 
-                height: '45px', 
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                {expense.photoPath && (
-                  <img 
-                    src={expense.photoPath} 
-                    alt="Receipt" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
-                  />
-                }
-              </div>
-              
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
-                  <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {expense.merchant || 'Unknown merchant'}
-                  </h3>
-                  {getCategoryBadge(expense.category)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+          {filteredExpenses.map(exp => (
+            <Card key={exp.id} padding="md" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                  <Badge variant="info" size="sm">
+                    {categoryLabels[exp.category as ExpenseCategory] || exp.category}
+                  </Badge>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>
+                    {exp.merchant || 'Unknown Merchant'}
+                  </div>
                 </div>
-                <div style={{ marginTop: 'var(--spacing-xs)', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                  {formatAmount(expense.amount)} • {formatDate(expense.date)}
-                  {expense.notes && <span> • {expense.notes}</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-lg)' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--color-primary)' }}>
+                      £{(exp.amount || 0).toFixed(2)}
+                    </div>
+                    {exp.vatAmount && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-success)' }}>
+                        VAT: £{exp.vatAmount.toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    {exp.date ? new Date(exp.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No date'}
+                  </div>
                 </div>
               </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--spacing-xs)' }}>
-                <div style={{ fontWeight: 600, color: 'var(--color-error)', fontSize: '0.9rem' }}>
-                  {formatAmount(expense.amount)}
+
+              {exp.items && exp.items.length > 0 && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: 'var(--spacing-md)' }}>
+                  {exp.items.map((item: any, i: number) => (
+                    <div key={i}>
+                      {item.description} — £{item.amount?.toFixed(2)}
+                    </div>
+                  ))}
                 </div>
-                <ChevronRight size={20} style={{ color: 'var(--color-text-muted)' }} />
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-xs)' }}>
+                <Button variant="ghost" size="sm" onClick={() => navigate(`/expenses/${exp.id}`)} leftIcon={<ChevronRight size={14} />}>
+                  View
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(exp.id!)} style={{ color: 'var(--color-error)' }}>
+                  <span>Delete</span>
+                </Button>
               </div>
             </Card>
           ))}
@@ -135,5 +161,3 @@ export function ExpenseList() {
     </div>
   )
 }
-
-import type { ExpenseDexie } from '@lib/dexie'

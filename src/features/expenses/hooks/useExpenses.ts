@@ -16,8 +16,8 @@ interface UseExpensesReturn {
   updateExpense: (id: number, updates: Partial<ExpenseDexie>) => Promise<void>
   deleteExpense: (id: number) => Promise<void>
   getExpense: (id: number) => Promise<ExpenseDexie | undefined>
-  getTotalByCategory: () => Promise<Record<string, number>>
-  getTotalByMonth: () => Promise<Record<string, number>>
+  getExpensesByDateRange: (start: Date, end: Date) => Promise<ExpenseDexie[]>
+  getTotalByCategory: (start: Date, end: Date) => Promise<Record<string, number>>
 }
 
 export function useExpenses(): UseExpensesReturn {
@@ -33,7 +33,11 @@ export function useExpenses(): UseExpensesReturn {
     setLoading(true)
     setError(null)
     try {
-      const data = await db.expenses.where('advisorId').equals(advisorId).reverse().sortBy('date')
+      const data = await db.expenses
+        .where('advisorId')
+        .equals(advisorId)
+        .reverse()
+        .sortBy('date')
       setExpenses(data)
     } catch {
       setError('Failed to load expenses')
@@ -82,27 +86,24 @@ export function useExpenses(): UseExpensesReturn {
     return db.expenses.get(id)
   }, [])
 
-  const getTotalByCategory = useCallback(async () => {
-    if (!advisorId) return {}
-    const data = await db.expenses.where('advisorId').equals(advisorId).toArray()
-    const totals: Record<string, number> = {}
-    for (const expense of data) {
-      const cat = expense.category || 'other'
-      totals[cat] = (totals[cat] || 0) + expense.amount
-    }
-    return totals
+  const getExpensesByDateRange = useCallback(async (start: Date, end: Date) => {
+    if (!advisorId) return []
+    return db.expenses
+      .where('advisorId')
+      .equals(advisorId)
+      .and(e => e.date >= start && e.date <= end)
+      .toArray()
   }, [advisorId])
 
-  const getTotalByMonth = useCallback(async () => {
-    if (!advisorId) return {}
-    const data = await db.expenses.where('advisorId').equals(advisorId).toArray()
+  const getTotalByCategory = useCallback(async (start: Date, end: Date) => {
+    const rangeExpenses = await getExpensesByDateRange(start, end)
     const totals: Record<string, number> = {}
-    for (const expense of data) {
-      const month = expense.date.toISOString().slice(0, 7) // YYYY-MM
-      totals[month] = (totals[month] || 0) + expense.amount
+    for (const exp of rangeExpenses) {
+      const cat = exp.category || 'other'
+      totals[cat] = (totals[cat] || 0) + (exp.amount || 0)
     }
     return totals
-  }, [advisorId])
+  }, [getExpensesByDateRange])
 
   useEffect(() => {
     loadExpenses()
@@ -117,7 +118,7 @@ export function useExpenses(): UseExpensesReturn {
     updateExpense,
     deleteExpense,
     getExpense,
+    getExpensesByDateRange,
     getTotalByCategory,
-    getTotalByMonth,
   }
 }

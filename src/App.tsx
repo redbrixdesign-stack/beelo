@@ -24,6 +24,12 @@ import { MeasurementCheckForm } from './features/measurements/components/Measure
 import { MeasurementCheckList } from './features/measurements/components/MeasurementCheckList'
 import { IncidentList } from './features/incidents/components/IncidentList'
 import { IncidentDetail } from './features/incidents/components/IncidentDetail'
+import { DeliveryDropNoteView } from './features/delivery/components/DeliveryDropNoteView'
+import { ExpensesPage, NewExpensePage } from './features/expenses/components/ExpensePageWrapper'
+import { ExpenseReceiptView } from './features/expenses/components/ExpenseReceiptView'
+import { DORPrediction } from './features/dor/components/DORPrediction'
+import { OnboardingFlow } from './features/onboarding/components/OnboardingFlow'
+import { PilotMetricsDashboard } from './features/pilot/components/PilotMetricsDashboard'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -253,6 +259,52 @@ export default function App() {
       <Route path="/settings" element={
         <ProtectedRoute>
           <SettingsScreen />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/onboarding" element={
+        <ProtectedRoute>
+          <OnboardingFlow />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/documents/:id/delivery" element={
+        <ProtectedRoute>
+          <DeliveryDropNoteView />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/expenses" element={
+        <ProtectedRoute>
+          <ExpensesPage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/expenses/new" element={
+        <ProtectedRoute>
+          <NewExpensePage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/expenses/:id" element={
+        <ProtectedRoute>
+          <ExpenseReceiptView />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/dor" element={
+        <ProtectedRoute>
+          <Layout title="DOR Prediction">
+            <DORPrediction />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/pilot" element={
+        <ProtectedRoute>
+          <Layout title="Pilot Metrics">
+            <PilotMetricsDashboard />
+          </Layout>
         </ProtectedRoute>
       } />
       
