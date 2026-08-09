@@ -5,7 +5,7 @@ import { useDashboardStats } from '@hooks/useDashboardStats'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '@components/layout/Layout'
 import { SyncQueuePanel } from '@components/sync/SyncQueuePanel'
-import { Calendar, Users, TrendingUp, AlertTriangle, Clock } from 'lucide-react'
+import { Calendar, Users, TrendingUp, AlertTriangle, Clock, FileText, Camera } from 'lucide-react'
 import { Card } from '@components/ui/Card'
 import { Badge } from '@components/ui/Badge'
 import { Button } from '@components/ui/Button'
@@ -95,13 +95,13 @@ export function Home() {
               <Users size={20} style={{ marginBottom: '4px' }} />
               <div>New Customer</div>
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/visits')} fullWidth style={{ minHeight: '60px' }}>
-              <TrendingUp size={20} style={{ marginBottom: '4px' }} />
-              <div>View Visits</div>
+            <Button variant="secondary" onClick={() => navigate('/documents/capture')} fullWidth style={{ minHeight: '60px' }}>
+              <Camera size={20} style={{ marginBottom: '4px' }} />
+              <div>Capture Document</div>
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/customers')} fullWidth style={{ minHeight: '60px' }}>
-              <Users size={20} style={{ marginBottom: '4px' }} />
-              <div>View Customers</div>
+            <Button variant="secondary" onClick={() => navigate('/documents')} fullWidth style={{ minHeight: '60px' }}>
+              <FileText size={20} style={{ marginBottom: '4px' }} />
+              <div>View Documents</div>
             </Button>
           </div>
         </Card>
