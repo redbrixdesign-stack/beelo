@@ -11,15 +11,15 @@ import './styles/globals.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <DexieProvider>
-          <SyncProvider>
-            <ToastProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <DexieProvider>
+            <SyncProvider>
               <App />
-            </ToastProvider>
-          </SyncProvider>
-        </DexieProvider>
-      </AuthProvider>
+            </SyncProvider>
+          </DexieProvider>
+        </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   </React.StrictMode>
 )

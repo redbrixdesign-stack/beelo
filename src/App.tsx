@@ -30,6 +30,7 @@ import { ExpenseReceiptView } from './features/expenses/components/ExpenseReceip
 import { DORPrediction } from './features/dor/components/DORPrediction'
 import { OnboardingFlow } from './features/onboarding/components/OnboardingFlow'
 import { TripTrackingPage } from './pages/TripTracking'
+import { PilotMetricsDashboard } from './features/pilot'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { OnboardingGuard } from './features/onboarding/hooks/useOnboardingGuard'
 
@@ -331,15 +332,7 @@ export default function App() {
           <TripTrackingPage />
         </OnboardingProtectedRoute>
       } />
-      
-      <Route path="/sync" element={
-        <OnboardingProtectedRoute>
-          <Layout title="Sync Status">
-            <SyncStatus />
-          </Layout>
-        </OnboardingProtectedRoute>
-      } />
-      
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
