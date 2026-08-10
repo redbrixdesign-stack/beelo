@@ -57,7 +57,10 @@ export function useOnboarding() {
     const now = new Date()
     const sourceEnv = getDefaultSourceEnv()
 
+    const existing = await db.onboardingState.where('advisorId').equals(advisorId).first()
+
     await db.onboardingState.put({
+      id: existing?.id,
       advisorId,
       currentStep: state.currentStep,
       completedSteps: state.completedSteps,
