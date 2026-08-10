@@ -71,6 +71,11 @@ export function IncidentList({ visitId, onOpen }: IncidentListProps) {
       <Card padding="xl" style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
         <AlertTriangle size={48} style={{ marginBottom: 'var(--spacing-md)', opacity: 0.5 }} />
         <p>{visitId ? 'No incidents for this visit' : 'No incidents recorded'}</p>
+        {!visitId && (
+          <Button onClick={() => window.location.href = '/incidents/new'} style={{ marginTop: 'var(--spacing-md)' }}>
+            <Plus size={18} /> Log First Incident
+          </Button>
+        )}
       </Card>
     )
   }

@@ -105,6 +105,11 @@ export function ExpenseList({ onNew, dateRange }: ExpenseListProps) {
         <Card padding="xl" style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
           <CreditCard size={48} style={{ marginBottom: 'var(--spacing-md)', opacity: 0.5 }} />
           <p>No expenses found</p>
+          {!search && categoryFilter === 'all' && (
+            <Button onClick={onNew} style={{ marginTop: 'var(--spacing-md)' }}>
+              <Plus size={18} /> Add First Expense
+            </Button>
+          )}
         </Card>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
