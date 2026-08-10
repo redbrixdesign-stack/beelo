@@ -14,6 +14,7 @@ interface OnboardingState {
   currentStep: StepId
   completedSteps: StepId[]
   skippedSteps: StepId[]
+  completed?: boolean
 }
 
 export function useOnboarding() {
@@ -61,6 +62,7 @@ export function useOnboarding() {
       currentStep: state.currentStep,
       completedSteps: state.completedSteps,
       skippedSteps: state.skippedSteps,
+      completed: state.completed,
       sourceEnv,
       updatedAt: now,
     } as OnboardingStateDexie)
@@ -70,6 +72,7 @@ export function useOnboarding() {
       current_step: state.currentStep,
       completed_steps: state.completedSteps,
       skipped_steps: state.skippedSteps,
+      completed: state.completed,
       source_env: sourceEnv,
     })
   }, [advisorId])
@@ -111,6 +114,7 @@ export function useOnboarding() {
       ...onboardingState,
       currentStep: 'complete' as StepId,
       completedSteps: [...onboardingState.completedSteps, 'complete'],
+      completed: true,
     }
     setOnboardingState(newState)
     await saveOnboardingState(newState)

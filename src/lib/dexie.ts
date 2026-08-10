@@ -383,6 +383,7 @@ export interface OnboardingStateDexie {
   currentStep: number
   completedSteps: number[]
   skippedSteps: number[]
+  completed?: boolean
   sourceEnv: SourceEnv
   createdAt: Date
   updatedAt: Date
@@ -524,7 +525,7 @@ constructor() {
       expenseLineItems: '++id, expenseId, description, amount, vatAmount, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [expenseId]',
       settings: '++id, advisorId, key, value, sourceEnv, createdAt, updatedAt, [advisorId+key]',
       dorPredictions: '++id, advisorId, weekStart, weekEnd, predictedDORRate, currentDORRate, blindsAtRisk, estimatedPenalty, confidence, modelVersion, promptVersion, generatedAt, sourceEnv, createdAt, updatedAt, [advisorId+weekStart], [advisorId]',
-      onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, sourceEnv, createdAt, updatedAt, [advisorId]',
+      onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, completed, sourceEnv, createdAt, updatedAt, [advisorId]',
       pilotMetrics: '++id, advisorId, date, metricName, metricValue, metadata, sourceEnv, createdAt, [advisorId+date], [advisorId]',
       pilotEvents: '++id, advisorId, eventType, eventData, sourceEnv, createdAt, synced, [advisorId+eventType], [advisorId+createdAt], [synced]',
       messageDrafts: '++id, advisorId, relatedType, relatedId, draftText, status, sourceEnv, createdAt, updatedAt, [advisorId]',
@@ -551,7 +552,7 @@ constructor() {
       expenseLineItems: '++id, expenseId, description, amount, vatAmount, sourceEnv, modelVersion, promptVersion, confidence, extractedAt, createdAt, [expenseId]',
       settings: '++id, advisorId, key, value, sourceEnv, createdAt, updatedAt, [advisorId+key]',
       dorPredictions: '++id, advisorId, weekStart, weekEnd, predictedDORRate, currentDORRate, blindsAtRisk, estimatedPenalty, confidence, modelVersion, promptVersion, generatedAt, sourceEnv, createdAt, updatedAt, [advisorId+weekStart], [advisorId]',
-      onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, sourceEnv, createdAt, updatedAt, [advisorId]',
+      onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, completed, sourceEnv, createdAt, updatedAt, [advisorId]',
       pilotMetrics: '++id, advisorId, date, metricName, metricValue, metadata, sourceEnv, createdAt, [advisorId+date], [advisorId]',
       pilotEvents: '++id, advisorId, eventType, eventData, sourceEnv, createdAt, synced, [advisorId+eventType], [advisorId+createdAt], [synced]',
       messageDrafts: '++id, advisorId, relatedType, relatedId, draftText, status, sourceEnv, createdAt, updatedAt, [advisorId]',
