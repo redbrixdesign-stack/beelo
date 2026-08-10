@@ -53,13 +53,8 @@ async function withRetry<T>(
         await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
-    throw lastError
   }
-}
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  throw lastError
 }
 
 serve(async (req) => {
@@ -99,15 +94,20 @@ serve(async (req) => {
     }
 
     const imageBuffer = await imageData.arrayBuffer()
-    // Use chunked base64 encoding to avoid stack overflow on large images
     const bytes = new Uint8Array(imageBuffer)
+    // Build binary string via simple loops to avoid call stack overflow
+    // (String.fromCharCode.apply/spread would push 32KB+ args onto the stack)
     const chunkSize = 0x8000 // 32KB chunks
-    let base64Image = ''
+    let binary = ''
     for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.slice(i, i + chunkSize)
-      base64Image += String.fromCharCode.apply(null, chunk)
+      let chunkStr = ''
+      const end = Math.min(i + chunkSize, bytes.length)
+      for (let j = i; j < end; j++) {
+        chunkStr += String.fromCharCode(bytes[j])
+      }
+      binary += chunkStr
     }
-    base64Image = btoa(base64Image)
+    const base64Image = btoa(binary)
 
     // Call Claude API for OCR with retry logic
     const controller = new AbortController()
