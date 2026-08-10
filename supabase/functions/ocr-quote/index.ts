@@ -210,6 +210,7 @@ UK English spelling. Be precise with numbers. If a field is not visible, use nul
         }),
         signal: controller.signal
       })
+      return response
     })
     
     clearTimeout(timeoutId)
