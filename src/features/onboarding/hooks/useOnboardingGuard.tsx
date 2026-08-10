@@ -21,9 +21,9 @@ export function useOnboardingGuard() {
       }
 
       try {
-        const onboardingRecord = await db.onboardingState.where('advisorId').equals(advisor.id).first()
+        const records = await db.onboardingState.where('advisorId').equals(advisor.id).toArray()
 
-        const isComplete = onboardingRecord?.currentStep === 'complete'
+        const isComplete = records.some(r => r.currentStep === 'complete')
 
         if (mounted) {
           setOnboardingComplete(isComplete)

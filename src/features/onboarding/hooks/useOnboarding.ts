@@ -57,7 +57,13 @@ export function useOnboarding() {
     const now = new Date()
     const sourceEnv = getDefaultSourceEnv()
 
-    const existing = await db.onboardingState.where('advisorId').equals(advisorId).first()
+    const allRecords = await db.onboardingState.where('advisorId').equals(advisorId).toArray()
+    const existing = allRecords.sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
+
+    if (existing) {
+      const oldIds = allRecords.filter(r => r.id !== existing.id).map(r => r.id)
+      await db.onboardingState.bulkDelete(oldIds)
+    }
 
     await db.onboardingState.put({
       id: existing?.id,
