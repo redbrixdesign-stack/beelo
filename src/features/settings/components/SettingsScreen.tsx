@@ -24,7 +24,7 @@ const SETTINGS_SECTIONS = [
 
 export function SettingsScreen() {
   const { settings, loading } = useSettings()
-  const [activeSection, setActiveSection] = useState<'profile' | 'hmrc' | 'backup' | 'notifications' | 'appearance' | 'data' | 'about'>('profile')
+  const [activeSection, setActiveSection] = useState<'profile' | 'hmrc' | 'backup' | 'export' | 'notifications' | 'appearance' | 'data' | 'about'>('profile')
 
   if (loading) {
     return <Layout title="Settings"><div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>Loading...</div></Layout>
@@ -87,7 +87,7 @@ export function SettingsScreen() {
         {ActiveComponent && <ActiveComponent />}
 
         {/* Placeholder for non-implemented sections */}
-        {!ActiveComponent && activeSection !== 'profile' && !['hmrc', 'backup'].includes(activeSection) && (
+        {!ActiveComponent && activeSection !== 'profile' && !['hmrc', 'backup', 'export'].includes(activeSection) && (
           <Card padding="xl" style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
             <Settings size={48} style={{ marginBottom: 'var(--spacing-md)', opacity: 0.5 }} />
             <h3 style={{ margin: '0 0 var(--spacing-sm)' }}>{SETTINGS_SECTIONS.find(s => s.id === activeSection)?.label}</h3>
