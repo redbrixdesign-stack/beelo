@@ -62,7 +62,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
   return (
     <div style={{
       position: 'fixed',
-      bottom: 'var(--spacing-lg)',
+      bottom: 'calc(var(--spacing-lg) + env(safe-area-inset-bottom, 0))',
       right: 'var(--spacing-lg)',
       zIndex: 9999,
       display: 'flex',
