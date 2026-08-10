@@ -5,15 +5,17 @@ import { Layout } from '@components/layout/Layout'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Badge } from '@components/ui/Badge'
-import { Settings, PoundSterling, Shield, Bell, Palette, Database, RotateCcw, Info, User, Car, Sparkles } from 'lucide-react'
+import { Settings, PoundSterling, Shield, Bell, Palette, Database, RotateCcw, Info, User, Car, Sparkles, Download, Database } from 'lucide-react'
 import { HMRCRatesConfig } from './HMRCRatesConfig'
 import { BackupRestore } from './BackupRestore'
+import { ExportData } from './ExportData'
 import { useSettings } from '../hooks/useSettings'
 
 const SETTINGS_SECTIONS = [
   { id: 'profile', label: 'Profile', icon: User, component: null },
   { id: 'hmrc', label: 'HMRC Rates', icon: PoundSterling, component: HMRCRatesConfig },
   { id: 'backup', label: 'Backup & Restore', icon: RotateCcw, component: BackupRestore },
+  { id: 'export', label: 'Export Data', icon: Download, component: ExportData },
   { id: 'notifications', label: 'Notifications', icon: Bell, component: null },
   { id: 'appearance', label: 'Appearance', icon: Palette, component: null },
   { id: 'data', label: 'Data & Sync', icon: Database, component: null },
