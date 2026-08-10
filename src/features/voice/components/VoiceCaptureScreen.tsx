@@ -9,8 +9,7 @@ import { useAuth } from '@hooks/useAuth'
 import { useDexie } from '@hooks/useDexie'
 import { useSync } from '@hooks/useSync'
 import { enqueueSync } from '@lib/sync'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useToast } from '@components/ui/Toast'
+import { logPilotEvent } from '@lib/supabase'
 import { AudioRecorder } from '../utils/audioRecorder'
 
 const fmtDuration = (ms: number) => {
@@ -106,6 +105,12 @@ export function VoiceCaptureScreen() {
       
       setRecordingState('done')
       showToast('Voice note saved', 'success')
+      
+      // Log pilot event: voice note recorded
+      logPilotEvent('voice_note_recorded', {
+        duration_ms: durationMs,
+        trigger_method: triggerMethod,
+      }).catch(() => {}) // Fire and forget
       
       setTimeout(() => navigate(-1), 1500)
     } catch (err) {

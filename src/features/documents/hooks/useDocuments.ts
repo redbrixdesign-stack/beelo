@@ -1,6 +1,7 @@
 // useDocuments - Dexie CRUD for documents and OCR line items
 
 import { useState, useEffect, useCallback } from 'react'
+import { supabase, logPilotEvent } from '@lib/supabase'
 import { db } from '@lib/dexie'
 import { useAuth } from '@hooks/useAuth'
 import { enqueueSync } from '@lib/sync'
@@ -72,6 +73,13 @@ export function useDocuments(): UseDocumentsReturn {
       })
 
       await loadDocuments()
+      
+      // Log pilot event: document captured
+      logPilotEvent('document_captured', {
+        document_id: localId,
+        document_type: doc.type,
+      }).catch(() => {}) // Fire and forget
+      
       return localId
     } catch (err) {
       console.error('Failed to create document:', err)

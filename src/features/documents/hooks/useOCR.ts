@@ -1,11 +1,10 @@
 // useOCR - Trigger OCR Edge Functions for document processing
 
 import { useEffect, useCallback, useState } from 'react'
-import { supabase } from '@lib/supabase'
+import { supabase, logPilotEvent } from '@lib/supabase'
 import { useSync } from '@hooks/useSync'
 import { useDexie } from '@hooks/useDexie'
 import { useAuth } from '@hooks/useAuth'
-import { useToast } from '@components/ui/Toast'
 import type { DocumentDexie } from '@lib/dexie'
 
 interface OCRResult {
@@ -441,48 +440,56 @@ export function useOCR() {
           }
 
           console.log(`OCR processed document ${doc.id} (${documentType})`)
-        } catch (err) {
-          console.error(`Failed to process document ${doc.id} (attempt ${currentRetry + 1}/${MAX_OCR_RETRIES}):`, err)
-          const nextRetry = currentRetry + 1
-          
-          // Circuit breaker: stop immediately on 500 server errors
-          if (isServerError(err)) {
-            console.error(`OCR circuit breaker triggered for document ${doc.id}: server error (500)`)
-            await db.documents.update(doc.id!, {
-              ocrError: err instanceof Error ? err.message : 'Server error (500)',
-              ocrRetryCount: MAX_OCR_RETRIES,
-              status: 'uploaded', // back to uploaded, no more retries
-              updatedAt: new Date(),
-            })
-            showToast(`OCR server error for document ${doc.id}`, 'error')
-            console.error(`OCR circuit breaker: document ${doc.id} set to uploaded due to server error`)
-          } else if (nextRetry >= MAX_OCR_RETRIES) {
-            // Max retries exceeded - mark as uploaded (not error) and stop retrying
-            await db.documents.update(doc.id!, {
-              ocrError: err instanceof Error ? err.message : 'Unknown OCR error',
-              ocrRetryCount: MAX_OCR_RETRIES,
-              status: 'uploaded', // not 'error' or 'ocr_failed' - back to uploaded for manual retry
-              updatedAt: new Date(),
-            })
-            showToast(`OCR failed for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`, 'error')
-            console.error(`OCR failed permanently for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`)
-          } else {
-            // Schedule retry with exponential backoff (2s, 4s, 8s)
-            await db.documents.update(doc.id!, {
-              ocrError: err instanceof Error ? err.message : 'Unknown OCR error',
-              ocrRetryCount: nextRetry,
-              status: 'uploaded', // back to uploaded for retry
-              updatedAt: new Date(),
-            })
-            showToast(`OCR failed, retrying (${nextRetry}/${MAX_OCR_RETRIES})`, 'warning')
-            const delay = OCR_RETRY_BACKOFF_MS * Math.pow(2, nextRetry - 1) // 2s, 4s, 8s
-            setTimeout(() => {
-              if (!processing) {
-                processPendingDocuments()
-              }
-            }, delay)
+            // Log pilot event: OCR success
+            logPilotEvent('ocr_completed', {
+              document_id: doc.id,
+              document_type: documentType,
+              duration_ms: Date.now() - doc.updatedAt.getTime(),
+              confidence: 'confidence' in result ? (result as any).confidence : undefined,
+              page_count: Array.isArray((result as any).lineItems) ? (result as any).lineItems.length : undefined,
+            }).catch(() => {}) // Fire and forget
+          } catch (err) {
+            console.error(`Failed to process document ${doc.id} (attempt ${currentRetry + 1}/${MAX_OCR_RETRIES}):`, err)
+            const nextRetry = currentRetry + 1
+            
+            // Circuit breaker: stop immediately on 500 server errors
+            if (isServerError(err)) {
+              console.error(`OCR circuit breaker triggered for document ${doc.id}: server error (500)`)
+              await db.documents.update(doc.id!, {
+                ocrError: err instanceof Error ? err.message : 'Server error (500)',
+                ocrRetryCount: MAX_OCR_RETRIES,
+                status: 'uploaded', // back to uploaded, no more retries
+                updatedAt: new Date(),
+              })
+              showToast(`OCR server error for document ${doc.id}`, 'error')
+              console.error(`OCR circuit breaker: document ${doc.id} set to uploaded due to server error`)
+            } else if (nextRetry >= MAX_OCR_RETRIES) {
+              // Max retries exceeded - mark as uploaded (not error) and stop retrying
+              await db.documents.update(doc.id!, {
+                ocrError: err instanceof Error ? err.message : 'Unknown OCR error',
+                ocrRetryCount: MAX_OCR_RETRIES,
+                status: 'uploaded', // not 'error' or 'ocr_failed' - back to uploaded for manual retry
+                updatedAt: new Date(),
+              })
+              showToast(`OCR failed for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`, 'error')
+              console.error(`OCR failed permanently for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`)
+            } else {
+              // Schedule retry with exponential backoff (2s, 4s, 8s)
+              await db.documents.update(doc.id!, {
+                ocrError: err instanceof Error ? err.message : 'Unknown OCR error',
+                ocrRetryCount: nextRetry,
+                status: 'uploaded', // back to uploaded for retry
+                updatedAt: new Date(),
+              })
+              showToast(`OCR failed, retrying (${nextRetry}/${MAX_OCR_RETRIES})`, 'warning')
+              const delay = OCR_RETRY_BACKOFF_MS * Math.pow(2, nextRetry - 1) // 2s, 4s, 8s
+              setTimeout(() => {
+                if (!processing) {
+                  processPendingDocuments()
+                }
+              }, delay)
+            }
           }
-        }
       }
 
       setLastProcessed(new Date())

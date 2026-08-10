@@ -8,6 +8,7 @@ import { useDexie } from '@hooks/useDexie'
 import { useAuth } from '@hooks/useAuth'
 import type { VisitDexie, ScheduleSuggestionDexie, AdvisorDexie } from '@lib/dexie'
 import { ScheduleRiskLevel } from '@lib/constants'
+import { logPilotEvent } from '@lib/supabase'
 
 interface ScheduleGap {
   id: string
@@ -125,6 +126,16 @@ export function useScheduleRisk(): ScheduleRiskResult & { recompute: () => Promi
         }))
 
       setSuggestions(newSuggestions)
+      
+      // Log pilot event: schedule risk warning shown
+      if (newSuggestions.length > 0) {
+        logPilotEvent('schedule_risk_warning_shown', {
+          high_risk_count: newSuggestions.filter(s => s.scheduleRiskFlag).length,
+          medium_risk_count: newSuggestions.filter(s => !s.scheduleRiskFlag).length,
+          total_suggestions: newSuggestions.length,
+          affected_visit_ids: newSuggestions.flatMap(s => s.affectedVisitIds),
+        }).catch(() => {}) // Fire and forget
+      }
     } catch {
       console.error('Schedule risk computation failed:')
     }

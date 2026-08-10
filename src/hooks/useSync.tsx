@@ -12,6 +12,7 @@ import {
 } from '../lib/sync'
 import { pullFromSupabase, pushToSupabase, fullSync } from '../lib/syncEngine'
 import { useToast } from '../components/ui/Toast'
+import { logPilotEvent } from '@lib/supabase'
 
 type SyncStatus = 'synced' | 'pending' | 'offline'
 
@@ -90,6 +91,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       }
       console.log(`Pulled ${totalPulled} records from server`)
       showToast(`Pulled ${totalPulled} records from server`, 'success')
+      // Log pilot event: sync completed (pull)
+      logPilotEvent('sync_completed', {
+        direction: 'pull',
+        records_processed: totalPulled,
+        conflicts_resolved: totalConflicts,
+      }).catch(() => {}) // Fire and forget
     } catch (err) {
       console.error('Pull from server failed:', err)
       showToast(err instanceof Error ? err.message : 'Pull from server failed', 'error')
@@ -115,6 +122,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       if (result.failed === 0) {
         showToast(`Pushed ${result.pushed} records to server`, 'success')
       }
+      // Log pilot event: sync completed (push)
+      logPilotEvent('sync_completed', {
+        direction: 'push',
+        records_pushed: result.pushed,
+        records_failed: result.failed,
+        errors_count: result.errors.length,
+      }).catch(() => {}) // Fire and forget
     } catch (err) {
       console.error('Push to server failed:', err)
       showToast(err instanceof Error ? err.message : 'Push to server failed', 'error')
@@ -146,6 +160,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       if (push.failed === 0) {
         showToast(`Full sync: pulled ${totalPulled}, pushed ${push.pushed}`, 'success')
       }
+      // Log pilot event: sync completed (full)
+      logPilotEvent('sync_completed', {
+        direction: 'full',
+        records_pulled: totalPulled,
+        records_pushed: push.pushed,
+        records_failed: push.failed,
+        conflicts_resolved: totalConflicts,
+      }).catch(() => {}) // Fire and forget
     } catch (err) {
       console.error('Full sync failed:', err)
       showToast(err instanceof Error ? err.message : 'Full sync failed', 'error')
