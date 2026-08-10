@@ -68,19 +68,31 @@ export function OnboardingFlow() {
       setErrors({})
     }
 
-    if (currentStep.id === 'profile') {
-      await saveProfile()
-    } else if (currentStep.id === 'business') {
-      await saveBusiness()
-    } else if (currentStep.id === 'consent') {
-      await saveConsent()
+    try {
+      if (currentStep.id === 'profile') {
+        await saveProfile()
+      } else if (currentStep.id === 'business') {
+        await saveBusiness()
+      } else if (currentStep.id === 'consent') {
+        await saveConsent()
+      }
+    } catch (err) {
+      console.error('Save failed:', err)
     }
 
     console.log('ADVANCING to step:', STEPS[currentStepIndex + 1]?.id)
-    await completeStep(currentStep.id)
+    try {
+      await completeStep(currentStep.id)
+    } catch (err) {
+      console.error('completeStep failed:', err)
+    }
     const nextIndex = Math.min(currentStepIndex + 1, STEPS.length - 1)
     setCurrentStepIndex(nextIndex)
-    await setStep(STEPS[nextIndex].id)
+    try {
+      await setStep(STEPS[nextIndex].id)
+    } catch (err) {
+      console.error('setStep failed:', err)
+    }
   }
 
   const handleBack = () => {
