@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { db, type SyncQueueItem, getDefaultSourceEnv, type AdvisorDexie } from './dexie'
 import { transformKeysToSnakeCase } from './dexie'
+import { logPilotEvent } from './supabase'
 
 const SYNC_BATCH_SIZE = 50
 const MAX_RETRIES = 3
@@ -180,6 +181,16 @@ export async function processSyncQueue(): Promise<{ processed: number; failed: n
         failed++
         if (result.error) errors.push(`${item.entityType}:${item.entityId} - ${result.error}`)
       }
+    }
+    
+    // Log pilot event: sync completed
+    if (processed > 0 || failed > 0) {
+      logPilotEvent('sync_completed', {
+        items_count: processed + failed,
+        success_count: processed,
+        failed_count: failed,
+        total_size_bytes: 0, // Could be calculated if needed
+      }).catch(() => {}) // Fire and forget
     }
     
     return { processed, failed, errors }

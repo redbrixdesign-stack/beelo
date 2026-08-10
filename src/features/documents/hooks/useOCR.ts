@@ -463,6 +463,15 @@ export function useOCR() {
               })
               showToast(`OCR server error for document ${doc.id}`, 'error')
               console.error(`OCR circuit breaker: document ${doc.id} set to uploaded due to server error`)
+              
+              // Log pilot event: OCR failed (circuit breaker)
+              logPilotEvent('ocr_failed', {
+                document_id: doc.id,
+                document_type: documentType,
+                error_message: err instanceof Error ? err.message : 'Server error (500)',
+                retry_count: currentRetry + 1,
+                circuit_breaker: true,
+              }).catch(() => {}) // Fire and forget
             } else if (nextRetry >= MAX_OCR_RETRIES) {
               // Max retries exceeded - mark as uploaded (not error) and stop retrying
               await db.documents.update(doc.id!, {
@@ -473,6 +482,14 @@ export function useOCR() {
               })
               showToast(`OCR failed for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`, 'error')
               console.error(`OCR failed permanently for document ${doc.id} after ${MAX_OCR_RETRIES} attempts`)
+              
+              // Log pilot event: OCR failed
+              logPilotEvent('ocr_failed', {
+                document_id: doc.id,
+                document_type: documentType,
+                error_message: err instanceof Error ? err.message : 'Unknown OCR error',
+                retry_count: MAX_OCR_RETRIES,
+              }).catch(() => {}) // Fire and forget
             } else {
               // Schedule retry with exponential backoff (2s, 4s, 8s)
               await db.documents.update(doc.id!, {

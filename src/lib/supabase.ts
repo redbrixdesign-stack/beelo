@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
+import { db } from './dexie'
+import { getDefaultSourceEnv } from './dexie'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -49,66 +51,97 @@ export type PilotEventType =
   | 'sync_completed'
   | 'schedule_risk_warning_shown'
 
-interface PilotEventData {
-  visit_id?: number
-  document_id?: number
-  document_type?: string
-  duration_ms?: number
-  blind_count?: number
-  risk_level?: 'low' | 'medium' | 'high'
-  gap_minutes?: number
-  estimated_duration?: number
-  document_type?: string
-  page_count?: number
-  confidence?: number
-  error_message?: string
-  retry_count?: number
-  items_count?: number
-  total_size_bytes?: number
-  risk_level?: 'low' | 'medium' | 'high'
-  gap_minutes?: number
-  estimated_duration_minutes?: number
-}
-
 // Pilot event logging - lightweight, PII-free
-// Call this from client-side code for key user actions
+// Stores locally in Dexie (offline-first), then syncs to Supabase when online
 export async function logPilotEvent(
   eventType: PilotEventType,
   eventData: Record<string, unknown> = {}
 ): Promise<void> {
+  const sourceEnv = getDefaultSourceEnv()
+  const now = new Date()
+  
+  // Get advisor ID from local Dexie (works offline)
+  let advisorId: number | null = null
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return // Not authenticated, skip silently
-
-    // Get advisor ID from user
-    const { data: advisor, error: advisorError } = await supabase
-      .from('advisors')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle()
-
-    if (advisorError || !advisor) return
-
-    const eventData = {
-      ...eventData,
-      timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent,
-      viewport: `${window.innerWidth}x${window.innerHeight}`,
+    const advisors = await db.advisors.toArray()
+    if (advisors.length > 0) {
+      advisorId = advisors[0].id ?? null
     }
+  } catch {
+    console.warn('Failed to get advisor from local DB')
+  }
+  
+  if (!advisorId) {
+    // No advisor configured yet, skip silently
+    return
+  }
 
-    const { error } = await supabase
-      .from('pilot_events')
-      .insert({
-        advisor_id: advisor.id,
-        event_type: eventType,
-        event_data: eventData,
-      })
+  // Prepare event data with metadata
+  const fullEventData = {
+    ...eventData,
+    timestamp: now.toISOString(),
+    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+    viewport: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'unknown',
+  }
 
-    if (error) {
-      console.warn('Failed to log pilot event:', error.message)
-    }
+  // Store locally in Dexie (works offline)
+  try {
+    await db.pilotEvents.add({
+      advisorId,
+      eventType,
+      eventData: fullEventData,
+      sourceEnv,
+      createdAt: now,
+      synced: false,
+    })
   } catch (err) {
-    console.warn('Failed to log pilot event:', err)
+    console.warn('Failed to log pilot event locally:', err)
+  }
+
+  // Also try to sync to Supabase if online
+  if (navigator.onLine) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: advisor, error: advisorError } = await supabase
+          .from('advisors')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .maybeSingle()
+
+        if (!advisorError && advisor) {
+          const { error } = await supabase
+            .from('pilot_events')
+            .insert({
+              advisor_id: advisor.id,
+              event_type: eventType,
+              event_data: fullEventData,
+            })
+
+          if (error) {
+            console.warn('Failed to log pilot event to Supabase:', error.message)
+          } else {
+            // Mark local event as synced
+            try {
+              const localEvents = await db.pilotEvents
+                .where('advisorId')
+                .equals(advisorId)
+                .and(e => e.eventType === eventType && e.synced === false)
+                .reverse()
+                .limit(1)
+                .toArray()
+              if (localEvents.length > 0) {
+                await db.pilotEvents.update(localEvents[0].id!, { synced: true })
+              }
+            } catch {
+              // Ignore local update errors
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to log pilot event to Supabase:', err)
+    }
   }
 }
 

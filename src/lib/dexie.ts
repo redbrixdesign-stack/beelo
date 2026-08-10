@@ -399,6 +399,16 @@ export interface PilotMetricDexie {
   createdAt: Date
 }
 
+export interface PilotEventDexie {
+  id?: number
+  advisorId: number
+  eventType: string
+  eventData: Record<string, unknown>
+  sourceEnv: SourceEnv
+  createdAt: Date
+  synced: boolean
+}
+
 export interface MessageDraftDexie {
   id?: number
   advisorId: number
@@ -487,6 +497,7 @@ export class BeeloDB extends Dexie {
   dorPredictions!: Table<DORPredictionDexie>
   onboardingState!: Table<OnboardingStateDexie>
   pilotMetrics!: Table<PilotMetricDexie>
+  pilotEvents!: Table<PilotEventDexie>
   messageDrafts!: Table<MessageDraftDexie>
   scheduleSuggestions!: Table<ScheduleSuggestionDexie>
   measurementChecks!: Table<MeasurementCheckDexie>
@@ -515,6 +526,7 @@ constructor() {
       dorPredictions: '++id, advisorId, weekStart, weekEnd, predictedDORRate, currentDORRate, blindsAtRisk, estimatedPenalty, confidence, modelVersion, promptVersion, generatedAt, sourceEnv, createdAt, updatedAt, [advisorId+weekStart], [advisorId]',
       onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, sourceEnv, createdAt, updatedAt, [advisorId]',
       pilotMetrics: '++id, advisorId, date, metricName, metricValue, metadata, sourceEnv, createdAt, [advisorId+date], [advisorId]',
+      pilotEvents: '++id, advisorId, eventType, eventData, sourceEnv, createdAt, synced, [advisorId+eventType], [advisorId+createdAt], [synced]',
       messageDrafts: '++id, advisorId, relatedType, relatedId, draftText, status, sourceEnv, createdAt, updatedAt, [advisorId]',
       scheduleSuggestions: '++id, advisorId, date, suggestionText, affectedVisitIds, estimatedSavingMiles, estimatedSavingMinutes, scheduleRiskFlag, status, sourceEnv, createdAt, updatedAt, [advisorId+date], [advisorId]',
       measurementChecks: '++id, advisorId, visitId, windowId, blindType, fitMethod, widthTopCm, widthMiddleCm, widthBottomCm, workingWidthCm, dropLeftCm, dropMiddleCm, dropRightCm, workingDropCm, diagonalTlBrCm, diagonalTrBlCm, diagonalDiffCm, toleranceCm, isSquare, passesTolerance, notes, photos, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',
@@ -541,6 +553,7 @@ constructor() {
       dorPredictions: '++id, advisorId, weekStart, weekEnd, predictedDORRate, currentDORRate, blindsAtRisk, estimatedPenalty, confidence, modelVersion, promptVersion, generatedAt, sourceEnv, createdAt, updatedAt, [advisorId+weekStart], [advisorId]',
       onboardingState: '++id, advisorId, currentStep, completedSteps, skippedSteps, sourceEnv, createdAt, updatedAt, [advisorId]',
       pilotMetrics: '++id, advisorId, date, metricName, metricValue, metadata, sourceEnv, createdAt, [advisorId+date], [advisorId]',
+      pilotEvents: '++id, advisorId, eventType, eventData, sourceEnv, createdAt, synced, [advisorId+eventType], [advisorId+createdAt], [synced]',
       messageDrafts: '++id, advisorId, relatedType, relatedId, draftText, status, sourceEnv, createdAt, updatedAt, [advisorId]',
       scheduleSuggestions: '++id, advisorId, date, suggestionText, affectedVisitIds, estimatedSavingMiles, estimatedSavingMinutes, scheduleRiskFlag, status, sourceEnv, createdAt, updatedAt, [advisorId+date], [advisorId]',
       measurementChecks: '++id, advisorId, visitId, windowId, blindType, fitMethod, widthTopCm, widthMiddleCm, widthBottomCm, workingWidthCm, dropLeftCm, dropMiddleCm, dropRightCm, workingDropCm, diagonalTlBrCm, diagonalTrBlCm, diagonalDiffCm, toleranceCm, isSquare, passesTolerance, notes, photos, sourceEnv, createdAt, updatedAt, [advisorId], [visitId]',

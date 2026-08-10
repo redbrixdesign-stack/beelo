@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useDexie } from '../../hooks/useDexie'
 import { useToast } from '../ui/Toast'
 import { enqueueSync } from '../../lib/sync'
+import { logPilotEvent } from '../../lib/supabase'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Textarea } from '../ui/Input'
@@ -238,6 +239,15 @@ export function VisitForm() {
         }
       } else {
         visitId = await db.visits.add({ ...payload, createdAt: now } as VisitDexie)
+        
+        // Log pilot event: visit created (only for new visits)
+        logPilotEvent('visit_created', {
+          visit_id: visitId,
+          blind_count: formData.blindCount,
+          appointment_type: formData.appointmentType,
+          job_source: formData.jobSource,
+          has_time_slot: !!formData.timeSlotStart && !!formData.timeSlotEnd,
+        }).catch(() => {}) // Fire and forget
       }
 
       await enqueueSync('visits', visitId, isEditing ? 'update' : 'create', payload)
