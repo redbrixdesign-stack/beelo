@@ -53,16 +53,21 @@ export function OnboardingFlow() {
 
   const handleNext = async () => {
     const currentStep = STEPS[currentStepIndex]
-    
-    // Validate current step before proceeding
-    const stepErrors = validateStep(currentStep.id)
-    if (Object.keys(stepErrors).length > 0) {
-      setErrors(stepErrors)
-      return
-    }
-    setErrors({})
 
-    // Save step-specific data
+    console.log('=== NEXT CLICKED ===')
+    console.log('Current step:', currentStep)
+    console.log('Current step ID:', STEPS[currentStepIndex]?.id)
+
+    const stepErrors = validateStep(currentStep.id)
+    console.log('Validation result:', stepErrors)
+
+    if (Object.keys(stepErrors).length > 0) {
+      console.log('Validation failed - showing errors but allowing pilot to proceed')
+      setErrors(stepErrors)
+    } else {
+      setErrors({})
+    }
+
     if (currentStep.id === 'profile') {
       await saveProfile()
     } else if (currentStep.id === 'business') {
@@ -71,6 +76,7 @@ export function OnboardingFlow() {
       await saveConsent()
     }
 
+    console.log('ADVANCING to step:', STEPS[currentStepIndex + 1]?.id)
     await completeStep(currentStep.id)
     const nextIndex = Math.min(currentStepIndex + 1, STEPS.length - 1)
     setCurrentStepIndex(nextIndex)
@@ -177,25 +183,6 @@ export function OnboardingFlow() {
   }
 
   const handleFinish = async () => {
-    // Final validation before completing
-    const finalErrors = validateStep('profile')
-    Object.assign(finalErrors, validateStep('business'))
-    Object.assign(finalErrors, validateStep('consent'))
-    
-    if (Object.keys(finalErrors).length > 0) {
-      setErrors(finalErrors)
-      // Navigate to first step with errors
-      const firstErrorStep = STEPS.findIndex(s => finalErrors[s.id] || 
-        (s.id === 'profile' && (finalErrors.businessName || finalErrors.employmentModel)) ||
-        (s.id === 'business' && (finalErrors.commissionRate || finalErrors.vatAdjustmentPercent)) ||
-        (s.id === 'consent' && finalErrors.consentStatus))
-      if (firstErrorStep >= 0) {
-        setCurrentStepIndex(firstErrorStep)
-        await setStep(STEPS[firstErrorStep].id)
-      }
-      return
-    }
-    
     await completeOnboarding()
     navigate('/')
   }
