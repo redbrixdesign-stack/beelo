@@ -2,6 +2,7 @@ import { Menu } from 'lucide-react'
 import { useSync } from '../../hooks/useSync'
 import { useOnline } from '../../hooks/useOnline'
 import { Badge } from '../ui/Badge'
+import { getDefaultSourceEnv } from '../../lib/dexie'
 
 interface HeaderProps {
   title: string
@@ -22,7 +23,7 @@ export function Header({ title, showBack = false, onBack, onMenuClick }: HeaderP
   }
 
   const getSourceEnvBadge = () => {
-    const env = (import.meta.env.VITE_SOURCE_ENV || 'live') as 'demo' | 'qa' | 'live'
+    const env = getDefaultSourceEnv()
     const variants = { demo: 'info', qa: 'warning', live: 'success' } as const
     return <Badge variant={variants[env]} size="sm">{env.toUpperCase()}</Badge>
   }
