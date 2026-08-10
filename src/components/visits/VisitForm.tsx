@@ -164,7 +164,17 @@ export function VisitForm() {
 
   const handleChange = (name: keyof VisitInput, value: unknown) => {
     setFormData(prev => ({ ...prev, [name]: value }))
-    validateField(name, value)
+    // Validate immediately for percentage/money fields
+    if (['discountPercent', 'commissionAmount', 'outcomeValue', 'companyScheduledDurationMinutes', 'estimatedDurationMinutes', 'blindCount'].includes(name)) {
+      const numValue = typeof value === 'string' ? parseFloat(value as string) : value
+      if (typeof value === 'string' && value !== '' && isNaN(Number(value))) {
+        setErrors(prev => ({ ...prev, [name]: 'Must be a valid number' }))
+      } else {
+        validateField(name, value)
+      }
+    } else {
+      validateField(name, value)
+    }
   }
 
   const handleCustomerChange = (customerId: string) => {

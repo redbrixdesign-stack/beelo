@@ -63,7 +63,17 @@ export function ProfileForm() {
 
   const handleChange = (name: keyof AdvisorProfile, value: unknown) => {
     setFormData(prev => ({ ...prev, [name]: value }))
-    validateField(name, value)
+    // Validate immediately for percentage/money fields to show errors
+    if (['commissionRatePercent', 'vatAdjustmentPercent', 'taxReservePercent', 'hmrcMileageRateTier1', 'hmrcMileageRateTier2', 'weeklyEarningsTarget'].includes(name)) {
+      const numValue = typeof value === 'string' ? parseFloat(value as string) : value
+      if (typeof value === 'string' && value !== '' && isNaN(Number(value))) {
+        setErrors(prev => ({ ...prev, [name]: 'Must be a valid number' }))
+      } else {
+        validateField(name, value)
+      }
+    } else {
+      validateField(name, value)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
