@@ -212,10 +212,13 @@ export function useOCR() {
           let storagePath = imagePath
           
           if (imagePath.startsWith('blob:') || imagePath.startsWith('data:')) {
+            if (!advisor.supabaseId) {
+              throw new Error('Advisor not synced to Supabase — cannot upload document')
+            }
             const response = await fetch(imagePath)
             const blob = await response.blob()
-            
-            const fileName = `documents/${advisor.id}/${doc.id}.jpg`
+
+            const fileName = `documents/${advisor.supabaseId}/${doc.id}_${Date.now()}.jpg`
             const { error: uploadError } = await supabase.storage
               .from('documents')
               .upload(fileName, blob, {

@@ -58,11 +58,14 @@ export function useTranscription() {
           
           // If audioPath is a local blob URL, we need to upload to Supabase Storage
           if (audioPath.startsWith('blob:') || audioPath.startsWith('data:')) {
+            if (!advisor.supabaseId) {
+              throw new Error('Advisor not synced to Supabase — cannot upload voice note')
+            }
             // Fetch the blob and upload
             const response = await fetch(audioPath)
             const blob = await response.blob()
-            
-            const fileName = `voice-notes/${advisor.id}/${note.id}.m4a`
+
+            const fileName = `voice-notes/${advisor.supabaseId}/${note.id}_${Date.now()}.m4a`
             const { error: uploadError } = await supabase.storage
               .from('voice-notes')
               .upload(fileName, blob, {
