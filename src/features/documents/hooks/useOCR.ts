@@ -1,10 +1,11 @@
 // useOCR - Trigger OCR Edge Functions for document processing
 
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import { supabase, logPilotEvent } from '@lib/supabase'
 import { useSync } from '@hooks/useSync'
 import { useDexie } from '@hooks/useDexie'
 import { useAuth } from '@hooks/useAuth'
+import { useToast } from '@components/ui/Toast'
 import type { DocumentDexie } from '@lib/dexie'
 
 interface OCRResult {
@@ -113,14 +114,25 @@ const EDGE_FUNCTION_MAP: Record<string, string> = {
 // OCR retry configuration
 const MAX_OCR_RETRIES = 3
 const OCR_RETRY_BACKOFF_MS = 2000 // Base delay: 2s, then exponential: 2s, 4s, 8s
+const OCR_FETCH_TIMEOUT_MS = 30000 // 30s timeout for Edge Function calls
 
 // Check if error is a 500 server error (circuit breaker)
 function isServerError(err: unknown): boolean {
   if (err instanceof Error) {
-    // Check if error message contains HTTP 500
     return err.message.includes('500') || err.message.includes('HTTP 500')
   }
   return false
+}
+
+// Fetch with timeout to prevent hanging requests
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 export function useOCR() {
@@ -129,6 +141,7 @@ export function useOCR() {
   const { status: syncStatus } = useSync()
   const { showToast } = useToast()
   const [processing, setProcessing] = useState(false)
+  const processingRef = useRef(false)
   const [lastProcessed, setLastProcessed] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -162,7 +175,7 @@ export function useOCR() {
     storagePath: string
   ): Promise<any> => {
     const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${edgeFunctionName}`
-    const response = await fetch(edgeFunctionUrl, {
+    const response = await fetchWithTimeout(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -172,19 +185,21 @@ export function useOCR() {
         document_id: String(documentId),
         image_path: storagePath,
       }),
-    })
+    }, OCR_FETCH_TIMEOUT_MS)
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(`OCR failed: ${errorData.error || 'Unknown error'}`)
+      const errorData = await response.json().catch(() => ({}))
+      const status = response.status
+      throw new Error(`OCR failed (${status}): ${errorData.error || 'Unknown error'}`)
     }
 
     return await response.json()
   }, [])
 
   const processPendingDocuments = useCallback(async () => {
-    if (!isReady || !advisor || processing) return
+    if (!isReady || !advisor || processingRef.current) return
     
+    processingRef.current = true
     setProcessing(true)
     setError(null)
     
@@ -198,6 +213,7 @@ export function useOCR() {
         .toArray()
 
       if (pendingDocs.length === 0) {
+        processingRef.current = false
         setProcessing(false)
         return
       }
@@ -504,7 +520,7 @@ export function useOCR() {
               showToast(`OCR failed, retrying (${nextRetry}/${MAX_OCR_RETRIES})`, 'warning')
               const delay = OCR_RETRY_BACKOFF_MS * Math.pow(2, nextRetry - 1) // 2s, 4s, 8s
               setTimeout(() => {
-                if (!processing) {
+                if (!processingRef.current) {
                   processPendingDocuments()
                 }
               }, delay)
@@ -517,6 +533,7 @@ export function useOCR() {
       setError(err instanceof Error ? err.message : 'OCR processing failed')
       showToast(err instanceof Error ? err.message : 'OCR processing failed', 'error')
     } finally {
+      processingRef.current = false
       setProcessing(false)
     }
   }, [isReady, db, classifyDocument, callOCRFunction])
