@@ -6,17 +6,19 @@ import { Layout } from '@components/layout/Layout'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Input } from '@components/ui/Input'
-import { Badge } from '@components/ui/Badge'
-import { CheckCircle, ChevronRight, ChevronLeft, User, Shield, Bell, Camera, Mic, Database, Sparkles } from 'lucide-react'
+import { Select } from '@components/ui/Select'
+import { CheckCircle, ChevronRight, ChevronLeft, User, Shield, Camera, Mic, Database, Sparkles, FileText, Target } from 'lucide-react'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { useAuth } from '@hooks/useAuth'
 import { useDexie } from '@hooks/useDexie'
 import { enqueueSync } from '@lib/sync'
-import { getDefaultSourceEnv } from '@lib/dexie'
+import { EmploymentModel, ConsentStatus } from '@lib/constants'
 
 const STEPS = [
   { id: 'welcome', label: 'Welcome', icon: Sparkles },
   { id: 'profile', label: 'Profile', icon: User },
+  { id: 'business', label: 'Business', icon: Target },
+  { id: 'consent', label: 'Consent', icon: FileText },
   { id: 'permissions', label: 'Permissions', icon: Shield },
   { id: 'environment', label: 'Environment', icon: Database },
   { id: 'tutorial', label: 'Tutorial', icon: Camera },
@@ -33,10 +35,15 @@ export function OnboardingFlow() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [formData, setFormData] = useState({
     businessName: '',
+    employmentModel: 'company_advisor' as EmploymentModel,
     commissionRate: 15.25,
+    vatAdjustmentPercent: 20.00,
+    weeklyEarningsTarget: '',
     fullJobMinutesPerBlind: 33,
     sourceEnv: 'live' as const,
+    consentStatus: 'pending' as ConsentStatus,
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (onboardingState) {
@@ -47,9 +54,21 @@ export function OnboardingFlow() {
   const handleNext = async () => {
     const currentStep = STEPS[currentStepIndex]
     
+    // Validate current step before proceeding
+    const stepErrors = validateStep(currentStep.id)
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors)
+      return
+    }
+    setErrors({})
+
     // Save step-specific data
     if (currentStep.id === 'profile') {
       await saveProfile()
+    } else if (currentStep.id === 'business') {
+      await saveBusiness()
+    } else if (currentStep.id === 'consent') {
+      await saveConsent()
     }
 
     await completeStep(currentStep.id)
@@ -62,6 +81,7 @@ export function OnboardingFlow() {
     const prevIndex = Math.max(currentStepIndex - 1, 0)
     setCurrentStepIndex(prevIndex)
     setStep(STEPS[prevIndex].id)
+    setErrors({})
   }
 
   const handleSkip = async () => {
@@ -70,31 +90,112 @@ export function OnboardingFlow() {
     const nextIndex = Math.min(currentStepIndex + 1, STEPS.length - 1)
     setCurrentStepIndex(nextIndex)
     await setStep(STEPS[nextIndex].id)
+    setErrors({})
+  }
+
+  const validateStep = (stepId: StepId): Record<string, string> => {
+    const errs: Record<string, string> = {}
+    
+    if (stepId === 'profile') {
+      if (!formData.businessName.trim()) {
+        errs.businessName = 'Business name is required'
+      }
+      if (!formData.employmentModel) {
+        errs.employmentModel = 'Employment model is required'
+      }
+    }
+    
+    if (stepId === 'business') {
+      if (formData.commissionRate < 0 || formData.commissionRate > 100) {
+        errs.commissionRate = 'Commission rate must be between 0 and 100'
+      }
+      if (formData.vatAdjustmentPercent < 0 || formData.vatAdjustmentPercent > 100) {
+        errs.vatAdjustmentPercent = 'VAT adjustment must be between 0 and 100'
+      }
+    }
+    
+    if (stepId === 'consent') {
+      if (formData.consentStatus !== 'granted') {
+        errs.consentStatus = 'You must grant consent to continue'
+      }
+    }
+    
+    return errs
   }
 
   const saveProfile = async () => {
     if (!user || !isReady) return
     const advisorId = parseInt(user.id)
     const now = new Date()
-    const sourceEnv = getDefaultSourceEnv()
 
     await db.advisors.update(advisorId, {
       businessName: formData.businessName,
-      commissionRatePercent: formData.commissionRate,
-      fullJobMinutesPerBlind: formData.fullJobMinutesPerBlind,
-      sourceEnv: formData.sourceEnv,
+      employmentModel: formData.employmentModel,
       updatedAt: now,
     })
 
     await enqueueSync('advisors', advisorId, 'update', {
       business_name: formData.businessName,
+      employment_model: formData.employmentModel,
+    })
+  }
+
+  const saveBusiness = async () => {
+    if (!user || !isReady) return
+    const advisorId = parseInt(user.id)
+    const now = new Date()
+
+    await db.advisors.update(advisorId, {
+      commissionRatePercent: formData.commissionRate,
+      vatAdjustmentPercent: formData.vatAdjustmentPercent,
+      weeklyEarningsTarget: formData.weeklyEarningsTarget ? parseFloat(formData.weeklyEarningsTarget) : null,
+      fullJobMinutesPerBlind: formData.fullJobMinutesPerBlind,
+      updatedAt: now,
+    })
+
+    await enqueueSync('advisors', advisorId, 'update', {
       commission_rate_percent: formData.commissionRate,
+      vat_adjustment_percent: formData.vatAdjustmentPercent,
+      weekly_earnings_target: formData.weeklyEarningsTarget ? parseFloat(formData.weeklyEarningsTarget) : null,
       full_job_minutes_per_blind: formData.fullJobMinutesPerBlind,
-      source_env: formData.sourceEnv,
+    })
+  }
+
+  const saveConsent = async () => {
+    if (!user || !isReady) return
+    const advisorId = parseInt(user.id)
+    const now = new Date()
+
+    await db.advisors.update(advisorId, {
+      consentStatus: formData.consentStatus,
+      updatedAt: now,
+    })
+
+    await enqueueSync('advisors', advisorId, 'update', {
+      consent_status: formData.consentStatus,
     })
   }
 
   const handleFinish = async () => {
+    // Final validation before completing
+    const finalErrors = validateStep('profile')
+    Object.assign(finalErrors, validateStep('business'))
+    Object.assign(finalErrors, validateStep('consent'))
+    
+    if (Object.keys(finalErrors).length > 0) {
+      setErrors(finalErrors)
+      // Navigate to first step with errors
+      const firstErrorStep = STEPS.findIndex(s => finalErrors[s.id] || 
+        (s.id === 'profile' && (finalErrors.businessName || finalErrors.employmentModel)) ||
+        (s.id === 'business' && (finalErrors.commissionRate || finalErrors.vatAdjustmentPercent)) ||
+        (s.id === 'consent' && finalErrors.consentStatus))
+      if (firstErrorStep >= 0) {
+        setCurrentStepIndex(firstErrorStep)
+        await setStep(STEPS[firstErrorStep].id)
+      }
+      return
+    }
+    
     await completeOnboarding()
     navigate('/')
   }
@@ -161,7 +262,28 @@ export function OnboardingFlow() {
                 value={formData.businessName}
                 onChange={e => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
                 placeholder="e.g. Smith Blinds"
+                error={errors.businessName}
               />
+              <Select
+                label="Employment Model"
+                value={formData.employmentModel}
+                onChange={e => setFormData(prev => ({ ...prev, employmentModel: e.target.value as EmploymentModel }))}
+                options={[
+                  { value: 'company_advisor', label: 'Company Advisor' },
+                  { value: 'independent', label: 'Independent' },
+                ]}
+                style={{ marginTop: 'var(--spacing-md)' }}
+                error={errors.employmentModel}
+              />
+            </div>
+          )}
+
+          {currentStep.id === 'business' && (
+            <div>
+              <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1.25rem' }}>Business Settings</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)' }}>
+                These values are used for commission calculations and earnings tracking.
+              </p>
               <Input
                 label="Commission Rate (%)"
                 type="number"
@@ -170,6 +292,27 @@ export function OnboardingFlow() {
                 max="100"
                 value={formData.commissionRate}
                 onChange={e => setFormData(prev => ({ ...prev, commissionRate: parseFloat(e.target.value) || 0 }))}
+                error={errors.commissionRate}
+              />
+              <Input
+                label="VAT Adjustment (%)"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={formData.vatAdjustmentPercent}
+                onChange={e => setFormData(prev => ({ ...prev, vatAdjustmentPercent: parseFloat(e.target.value) || 0 }))}
+                style={{ marginTop: 'var(--spacing-md)' }}
+                error={errors.vatAdjustmentPercent}
+              />
+              <Input
+                label="Weekly Earnings Target (£)"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.weeklyEarningsTarget}
+                onChange={e => setFormData(prev => ({ ...prev, weeklyEarningsTarget: e.target.value }))}
+                placeholder="Optional"
                 style={{ marginTop: 'var(--spacing-md)' }}
               />
               <Input
@@ -183,6 +326,36 @@ export function OnboardingFlow() {
               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 'var(--spacing-sm)' }}>
                 Default 33 min (install + prep + cleanup). Adjust based on your experience.
               </p>
+            </div>
+          )}
+
+          {currentStep.id === 'consent' && (
+            <div>
+              <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: '1.25rem' }}>Data Consent</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)' }}>
+                Beelo stores your business data locally on your device and syncs it to our secure servers for backup and cross-device access. We never sell your data.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: `2px solid ${formData.consentStatus === 'granted' ? 'var(--color-primary)' : 'var(--color-border)'}`, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.consentStatus === 'granted'}
+                    onChange={e => setFormData(prev => ({ ...prev, consentStatus: e.target.checked ? 'granted' : 'pending' }))}
+                    style={{ marginTop: '2px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>I consent to data processing and sync</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 'var(--spacing-xs)' }}>
+                      Your data is encrypted in transit and at rest. You can revoke consent anytime in Settings.
+                    </div>
+                  </div>
+                </label>
+              </div>
+              {errors.consentStatus && (
+                <p style={{ color: 'var(--color-error)', fontSize: '0.85rem', marginTop: 'var(--spacing-md)' }}>
+                  {errors.consentStatus}
+                </p>
+              )}
             </div>
           )}
 
@@ -235,7 +408,7 @@ export function OnboardingFlow() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
                 {['live', 'qa', 'demo'].map(env => (
                   <label key={env} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', border: `2px solid ${formData.sourceEnv === env ? 'var(--color-primary)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
-                    <input type="radio" name="sourceEnv" value={env} checked={formData.sourceEnv === env} onChange={e => setFormData(prev => ({ ...prev, sourceEnv: e.target.value as any }))} />
+                    <input type="radio" name="sourceEnv" value={env} checked={formData.sourceEnv === env} onChange={e => setFormData(prev => ({ ...prev, sourceEnv: e.target.value as 'live' | 'qa' | 'demo' }))} />
                     <div>
                       <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{env}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>

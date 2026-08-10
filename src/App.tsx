@@ -31,6 +31,7 @@ import { DORPrediction } from './features/dor/components/DORPrediction'
 import { OnboardingFlow } from './features/onboarding/components/OnboardingFlow'
 import { TripTrackingPage } from './pages/TripTracking'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { OnboardingGuard } from './features/onboarding/hooks/useOnboardingGuard'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -68,6 +69,16 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   )
 }
 
+function OnboardingProtectedRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <OnboardingGuard>
+        {children}
+      </OnboardingGuard>
+    </ProtectedRoute>
+  )
+}
+
 export default function App() {
   return (
     <Routes>
@@ -78,195 +89,195 @@ export default function App() {
       } />
       
       <Route path="/" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Dashboard">
             <Home />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/visits" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Visits">
             <Visits />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/visits/new" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="New Visit" showBack onBack={() => window.history.back()}>
             <VisitForm />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/visits/:id" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <VisitDetail />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/visits/:id/edit" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Edit Visit" showBack onBack={() => window.history.back()}>
             <VisitForm />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/visits/:visitId/measurements" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Measurements" showBack onBack={() => window.history.back()}>
             <MeasurementCheckList visitId={parseInt(window.location.pathname.split('/')[2])} checks={[]} onNew={() => window.history.pushState(null, '', `/visits/${window.location.pathname.split('/')[2]}/measurements/new`)} />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/visits/:visitId/measurements/new" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="New Measurement" showBack onBack={() => window.history.back()}>
             <MeasurementCheckForm visitId={parseInt(window.location.pathname.split('/')[2])} />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/visits/:visitId/measurements/:id" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Edit Measurement" showBack onBack={() => window.history.back()}>
             <MeasurementCheckForm visitId={parseInt(window.location.pathname.split('/')[2])} checkId={parseInt(window.location.pathname.split('/')[4])} />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/incidents" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Incidents">
             <IncidentList />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/incidents/:id" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <IncidentDetail />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/visits/:visitId/incidents" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Incidents" showBack onBack={() => window.history.back()}>
             <IncidentList visitId={parseInt(window.location.pathname.split('/')[2])} />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/customers" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Customers">
             <Customers />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/customers/new" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="New Customer" showBack onBack={() => window.history.back()}>
             <CustomerForm />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/customers/:id" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <CustomerDetail />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/customers/:id/edit" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Edit Customer" showBack onBack={() => window.history.back()}>
             <CustomerForm />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/profile" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Profile />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/sync" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Sync Status">
             <SyncStatus />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/documents" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Documents">
             <Documents />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/documents/capture" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <DocumentCapturePage />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/documents/:id" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <DocumentDetail />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
 <Route path="/voice/capture" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <VoiceCaptureScreen />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/voice/review" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Batch Review">
             <BatchReviewScreen />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/leads" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Leads">
             <Leads />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/leads/new" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="New Lead" showBack onBack={() => window.history.back()}>
             <LeadForm />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/leads/:id" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Lead Detail" showBack onBack={() => window.history.back()}>
             <LeadDetail />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/settings" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <SettingsScreen />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/onboarding" element={
@@ -276,57 +287,57 @@ export default function App() {
       } />
       
       <Route path="/documents/:id/delivery" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <DeliveryDropNoteView />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/expenses" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <ExpensesPage />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/expenses/new" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <NewExpensePage />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/expenses/:id" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <ExpenseReceiptView />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/dor" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="DOR Prediction">
             <DORPrediction />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/pilot" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Pilot Metrics">
             <PilotMetricsDashboard />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/trips/:visitId" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <TripTrackingPage />
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="/sync" element={
-        <ProtectedRoute>
+        <OnboardingProtectedRoute>
           <Layout title="Sync Status">
             <SyncStatus />
           </Layout>
-        </ProtectedRoute>
+        </OnboardingProtectedRoute>
       } />
       
       <Route path="*" element={<Navigate to="/" replace />} />
