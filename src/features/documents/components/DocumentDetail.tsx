@@ -11,11 +11,13 @@ import { FileText, Image, ChevronLeft, AlertCircle, CheckCircle, Clock, Hash, Tr
 import { DOCUMENT_STATUSES, DocumentStatus } from '@lib/constants'
 import type { DocumentDexie, QuoteLineItemDexie, CommissionLineItemDexie, FitLineItemDexie } from '@lib/dexie'
 import { supabase, getDocumentImageUrl } from '@lib/supabase'
+import { useToast } from '@components/ui/Toast'
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { documents, loadDocuments, getDocument, deleteDocument, quoteLineItems, loadQuoteLineItems, commissionLineItems, loadCommissionLineItems, fitLineItems, loadFitLineItems } = useDocuments()
+  const { showToast } = useToast()
   const [document, setDocument] = useState<DocumentDexie | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
@@ -75,11 +77,11 @@ export function DocumentDetail() {
 
   const handleDelete = async () => {
     if (!document || !confirm('Delete this document? This cannot be undone.')) return
-    console.log('[DocumentDetail] Deleting document:', document.id, 'imagePath:', document.imagePath)
+    console.log('Delete clicked', document.id)
     setDeleting(true)
     try {
       await deleteDocument(document.id!)
-      console.log('[DocumentDetail] Document deleted successfully:', document.id)
+      console.log('Delete success')
       showToast('Document deleted', 'success')
       navigate('/documents')
     } catch (err) {
