@@ -9,6 +9,7 @@ import { useToast } from '@components/ui/Toast'
 import type { DocumentDexie } from '@lib/dexie'
 
 interface OCRResult {
+  document_type?: string
   lineItems: Array<{
     room?: string
     position?: string
@@ -20,6 +21,7 @@ interface OCRResult {
     unitPrice?: number
     lineTotal?: number
   }>
+  extracted_data?: Record<string, any>
   additionalNotes?: string | null
   confidence: number
   modelVersion: string
@@ -190,7 +192,10 @@ export function useOCR() {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       const status = response.status
-      throw new Error(`OCR failed (${status}): ${errorData.error || 'Unknown error'}`)
+      const errorMessage = typeof errorData.error === 'object' && errorData.error !== null
+        ? (errorData.error?.message || JSON.stringify(errorData.error))
+        : (errorData.error || errorData.message || 'Unknown error')
+      throw new Error(`OCR failed (${status}): ${errorMessage}`)
     }
 
     return await response.json()
@@ -234,7 +239,7 @@ export function useOCR() {
             const response = await fetch(imagePath)
             const blob = await response.blob()
 
-            const fileName = `documents/${advisor.supabaseId}/${doc.id}_${Date.now()}.jpg`
+            const fileName = `${advisor.supabaseId}/${doc.id}_${Date.now()}.jpg`
             const { error: uploadError } = await supabase.storage
               .from('documents')
               .upload(fileName, blob, {
@@ -252,8 +257,8 @@ export function useOCR() {
 
           // Classify document type if not already set (truly unclassified)
           let documentType = doc.type
-          const needsClassification = !doc.type // only classify if type is genuinely unknown
-          
+          const needsClassification = !doc.type || doc.type === '' // classify if type is empty/unknown
+
           if (needsClassification) {
             await db.documents.update(doc.id!, { status: 'classifying', updatedAt: new Date() })
             const classification = await classifyDocument(storagePath)
@@ -288,12 +293,27 @@ export function useOCR() {
           // Call OCR Edge Function
           const result = await callOCRFunction(edgeFunctionName, doc.id!, storagePath)
 
+          // Update document type if OCR detected a more specific type
+          const detectedType = result?.document_type
+          if (detectedType && detectedType !== 'unknown' && detectedType !== documentType) {
+            const typeMap: Record<string, string> = {
+              'quote': 'quote_or_receipt',
+              'expense_receipt': 'expense_receipt',
+              'commission_statement': 'commission_statement',
+              'fit_receipt': 'fit_completion_receipt',
+              'delivery_note': 'delivery_drop_note',
+            }
+            const mappedType = typeMap[detectedType] || detectedType
+            documentType = mappedType
+            await db.documents.update(doc.id!, { type: mappedType as any, updatedAt: new Date() })
+          }
+
           // Process based on document type
           if (documentType === 'quote_or_receipt') {
             const quoteResult = result as OCRResult
-            
+
             await db.documents.update(doc.id!, {
-              parsedJson: { lineItems: quoteResult.lineItems },
+              parsedJson: { lineItems: quoteResult.lineItems, extractedData: quoteResult.extracted_data },
               additionalNotes: quoteResult.additionalNotes,
               status: 'parsed',
               modelVersion: quoteResult.modelVersion,

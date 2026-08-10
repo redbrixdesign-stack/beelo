@@ -41,24 +41,31 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // Strip bucket prefix if present (e.g. "documents/1/8.jpg" -> "1/8.jpg")
+    const cleanImagePath = image_path.replace(/^documents\//, '')
+
     const { data: imageData, error: downloadError } = await supabase.storage
       .from('documents')
-      .download(image_path)
+      .download(cleanImagePath)
 
     if (downloadError) {
       throw new Error(`Failed to download image: ${downloadError.message}`)
     }
 
     const imageBuffer = await imageData.arrayBuffer()
-    // Use chunked base64 encoding to avoid stack overflow on large images
     const bytes = new Uint8Array(imageBuffer)
-    const chunkSize = 0x8000
-    let base64Image = ''
+    // Build binary string via simple loops to avoid call stack overflow
+    const chunkSize = 0x8000 // 32KB chunks
+    let binary = ''
     for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.slice(i, i + chunkSize)
-      base64Image += String.fromCharCode.apply(null, chunk)
+      let chunkStr = ''
+      const end = Math.min(i + chunkSize, bytes.length)
+      for (let j = i; j < end; j++) {
+        chunkStr += String.fromCharCode(bytes[j])
+      }
+      binary += chunkStr
     }
-    base64Image = btoa(base64Image)
+    const base64Image = btoa(binary)
 
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

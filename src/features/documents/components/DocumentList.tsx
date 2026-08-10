@@ -42,6 +42,7 @@ export function DocumentList() {
   }
 
   const getTypeBadge = (type: DocumentType) => {
+    if (!type) return <Badge variant="default" size="sm">unclassified</Badge>
     return <Badge variant="info" size="sm">{type.replace(/_/g, ' ')}</Badge>
   }
 

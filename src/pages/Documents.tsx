@@ -52,7 +52,7 @@ export function Documents() {
 
   const handleCapture = async (file: File, _type?: string, _subtype?: string, _notes?: string) => {
     await createDocument({
-      type: 'quote_or_receipt', // placeholder, will be auto-classified
+      type: '' as any, // will be auto-classified by OCR
       imagePath: URL.createObjectURL(file),
       status: 'uploaded',
       matchStatus: 'unmatched',

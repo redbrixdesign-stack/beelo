@@ -84,10 +84,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // Strip bucket prefix if present (e.g. "documents/1/8.jpg" -> "1/8.jpg")
+    const cleanImagePath = imagePath.replace(/^documents\//, '')
+
     // Download image from storage
     const { data: imageData, error: downloadError } = await supabase.storage
       .from('documents')
-      .download(imagePath)
+      .download(cleanImagePath)
 
     if (downloadError) {
       return errorResponse(new Error(`Failed to download image: ${downloadError.message}`), 500)
@@ -129,10 +132,12 @@ serve(async (req) => {
             content: [
               {
                 type: 'text',
-                text: `You are an OCR service for UK blinds/sales advisors. Extract line items from this quote or receipt image.
+                text: `You are a document classifier and extractor for a UK blinds sales advisor.
 
-Return ONLY valid JSON with this exact structure:
+Analyze the image and return ONLY valid JSON:
 {
+  "document_type": "quote" | "commission_statement" | "fit_receipt" | "delivery_note" | "expense_receipt" | "unknown",
+  "confidence": 0.0-1.0,
   "lineItems": [
     {
       "room": "string or null",
@@ -146,11 +151,34 @@ Return ONLY valid JSON with this exact structure:
       "lineTotal": number or null
     }
   ],
+  "extracted_data": {
+    "customer_name": "string or null",
+    "job_code": "string or null",
+    "total_price": "number or null",
+    "commission_amount": "number or null",
+    "dor_penalty": "number or null",
+    "fitter_name": "string or null",
+    "completion_date": "string or null",
+    "blinds_fitted_count": "number or null",
+    "delivery_date": "string or null",
+    "items_delivered": "number or null",
+    "merchant": "string or null",
+    "amount": "number or null",
+    "date": "string or null",
+    "category": "string or null"
+  },
   "additionalNotes": "string or null",
-  "confidence": 0.0-1.0,
   "modelVersion": "claude-3-haiku-20240307",
-  "promptVersion": "quote-ocr-v1"
+  "promptVersion": "quote-ocr-v2"
 }
+
+Classification rules:
+- "quote": Contains prices, blind descriptions, customer details, job code
+- "commission_statement": Contains "commission", "DOR", "statement", "Hillarys" or similar
+- "fit_receipt": Contains "fit", "installation", "completed", fitter signature
+- "delivery_note": Contains "delivered", "drop note", "goods received"
+- "expense_receipt": Contains "receipt", "paid", "VAT", fuel or meal purchases
+- "unknown": Cannot determine type
 
 Extraction rules:
 - Each row = one line item
@@ -163,6 +191,7 @@ Extraction rules:
 - quantity: count of blinds (default 1 if not clear)
 - unitPrice: price per unit in GBP (extract numbers, handle £ symbol)
 - lineTotal: total for this line (quantity × unitPrice)
+- extracted_data: populate fields based on document_type
 - additionalNotes: ANY text visible on the document that doesn't fit the structured fields above — handwritten notes, special instructions, payment terms, delivery info, customer requests, installer names, phone numbers, email addresses, promotional text, disclaimers, etc. Capture verbatim. Use null if none.
 - confidence: your confidence in extraction accuracy (0.0-1.0)
 
@@ -230,7 +259,9 @@ UK English spelling. Be precise with numbers. If a field is not visible, use nul
     }
 
     // Validate and normalize
+    const validDocTypes = ['quote', 'commission_statement', 'fit_receipt', 'delivery_note', 'expense_receipt', 'unknown']
     const normalizedResult = {
+      document_type: validDocTypes.includes(result.document_type) ? result.document_type : 'unknown',
       lineItems: Array.isArray(result.lineItems) ? result.lineItems.map((item: any) => ({
         room: item.room || null,
         position: item.position || null,
@@ -242,10 +273,11 @@ UK English spelling. Be precise with numbers. If a field is not visible, use nul
         unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : null,
         lineTotal: typeof item.lineTotal === 'number' ? item.lineTotal : null,
       })) : [],
+      extracted_data: result.extracted_data && typeof result.extracted_data === 'object' ? result.extracted_data : {},
       additionalNotes: typeof result.additionalNotes === 'string' && result.additionalNotes.trim() ? result.additionalNotes.trim() : null,
       confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
       modelVersion: result.modelVersion || 'claude-3-haiku-20240307',
-      promptVersion: result.promptVersion || 'quote-ocr-v1',
+      promptVersion: result.promptVersion || 'quote-ocr-v2',
     }
 
     return new Response(
