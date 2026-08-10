@@ -7,7 +7,7 @@ import { enqueueSync } from '@lib/sync'
 import { getDefaultSourceEnv } from '@lib/dexie'
 import type { OnboardingStateDexie } from '@lib/dexie'
 
-const STEPS = ['welcome', 'profile', 'permissions', 'environment', 'tutorial', 'complete'] as const
+const STEPS = ['welcome', 'profile', 'business', 'consent', 'permissions', 'environment', 'tutorial', 'complete'] as const
 type StepId = typeof STEPS[number]
 
 interface OnboardingState {
